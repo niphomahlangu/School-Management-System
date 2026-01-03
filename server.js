@@ -42,8 +42,12 @@ connection.connect((err) => {
   }
 });
 
-// Serve static assets (like CSS, client-side JS, images, etc.)
-app.use(express.static(path.join(__dirname), { index: false }));
+// Serve static assets from specific directories
+app.use('/login', express.static(path.join(__dirname, 'login')));
+app.use('/admin', express.static(path.join(__dirname, 'admin')));
+app.use('/student', express.static(path.join(__dirname, 'student')));
+app.use('/lecturer', express.static(path.join(__dirname, 'lecturer')));
+app.use('/shared', express.static(path.join(__dirname, 'shared')));
 
 // Middleware to check if user is authenticated
 function isAuthenticated(req, res, next) {
@@ -80,14 +84,14 @@ app.get('/', (req, res) => {
   if (req.session && req.session.userId) {
     const role = req.session.userRole;
     if (role === 'admin') {
-      return res.redirect('/admin/dashboard');
+      return res.redirect('/admin');
     } else if (role === 'student') {
-      return res.redirect('/student/dashboard');
+      return res.redirect('/student');
     } else if (role === 'lecturer') {
-      return res.redirect('/lecturer/dashboard');
+      return res.redirect('/lecturer');
     }
   }
-  res.sendFile(path.join(__dirname, 'login.html'));
+  res.sendFile(path.join(__dirname, 'login', 'index.html'));
 });
 
 // Handle login form submission
@@ -133,11 +137,11 @@ app.post('/login', (req, res) => {
           // Determine redirect URL based on role
           let redirectUrl = '/';
           if (results[0].role === 'admin') {
-            redirectUrl = '/admin/dashboard';
+            redirectUrl = '/admin';
           } else if (results[0].role === 'student') {
-            redirectUrl = '/student/dashboard';
+            redirectUrl = '/student';
           } else if (results[0].role === 'lecturer') {
-            redirectUrl = '/lecturer/dashboard';
+            redirectUrl = '/lecturer';
           }
           
           // When successful, send success response
@@ -180,27 +184,40 @@ app.post('/logout', (req, res) => {
 });
 
 // Role-based dashboard routes
+app.get('/admin', noCache, hasRole('admin'), (req, res) => {
+  res.sendFile(path.join(__dirname, 'admin', 'index.html'));
+});
+
+app.get('/student', noCache, hasRole('student'), (req, res) => {
+  res.sendFile(path.join(__dirname, 'student', 'index.html'));
+});
+
+app.get('/lecturer', noCache, hasRole('lecturer'), (req, res) => {
+  res.sendFile(path.join(__dirname, 'lecturer', 'index.html'));
+});
+
+// Legacy routes for backward compatibility
 app.get('/admin/dashboard', noCache, hasRole('admin'), (req, res) => {
-  res.sendFile(path.join(__dirname, 'admin-dashboard.html'));
+  res.redirect('/admin');
 });
 
 app.get('/student/dashboard', noCache, hasRole('student'), (req, res) => {
-  res.sendFile(path.join(__dirname, 'student-dashboard.html'));
+  res.redirect('/student');
 });
 
 app.get('/lecturer/dashboard', noCache, hasRole('lecturer'), (req, res) => {
-  res.sendFile(path.join(__dirname, 'lecturer-dashboard.html'));
+  res.redirect('/lecturer');
 });
 
 // Legacy route for backward compatibility (redirects based on role)
 app.get('/home', noCache, isAuthenticated, (req, res) => {
   const role = req.session.userRole;
   if (role === 'admin') {
-    return res.redirect('/admin/dashboard');
+    return res.redirect('/admin');
   } else if (role === 'student') {
-    return res.redirect('/student/dashboard');
+    return res.redirect('/student');
   } else if (role === 'lecturer') {
-    return res.redirect('/lecturer/dashboard');
+    return res.redirect('/lecturer');
   }
   res.sendFile(path.join(__dirname, 'index.html'));
 });

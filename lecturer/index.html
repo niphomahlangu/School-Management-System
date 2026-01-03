@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Student Dashboard - School Management System</title>
-    <link rel="stylesheet" href="/index.css">
+    <title>Lecturer Dashboard - School Management System</title>
+    <link rel="stylesheet" href="/shared/index.css">
 </head>
 <body>
     <!-- Header -->
@@ -12,11 +12,11 @@
         <button class="menu-toggle" id="menuToggle">
             <span>☰</span>
         </button>
-        <h1 class="header-title">Student Dashboard</h1>
+        <h1 class="header-title">Lecturer Dashboard</h1>
         <div class="user-profile">
             <button class="profile-button" id="profileButton">
-                <div class="profile-icon">S</div>
-                <span class="profile-name">Student</span>
+                <div class="profile-icon">L</div>
+                <span class="profile-name">Lecturer</span>
                 <span class="dropdown-arrow">▼</span>
             </button>
             <div class="dropdown-menu" id="dropdownMenu">
@@ -33,12 +33,12 @@
         <ul class="sidebar-nav">
             <li><a href="#dashboard" class="active"><span class="nav-icon">📊</span> Dashboard</a></li>
             <li><a href="#my-courses"><span class="nav-icon">📚</span> My Courses</a></li>
-            <li><a href="#grades"><span class="nav-icon">🎯</span> Grades</a></li>
+            <li><a href="#students"><span class="nav-icon">👨‍🎓</span> Students</a></li>
+            <li><a href="#attendance"><span class="nav-icon">📝</span> Mark Attendance</a></li>
+            <li><a href="#grades"><span class="nav-icon">🎯</span> Manage Grades</a></li>
             <li><a href="#schedule"><span class="nav-icon">📅</span> Class Schedule</a></li>
-            <li><a href="#attendance"><span class="nav-icon">📝</span> Attendance</a></li>
-            <li><a href="#assignments"><span class="nav-icon">📄</span> Assignments</a></li>
             <li><a href="#materials"><span class="nav-icon">📖</span> Course Materials</a></li>
-            <li><a href="#transcript"><span class="nav-icon">📜</span> Transcript</a></li>
+            <li><a href="#announcements"><span class="nav-icon">📢</span> Announcements</a></li>
         </ul>
     </nav>
 
@@ -48,43 +48,44 @@
     <!-- Main Content -->
     <main class="main-content" id="mainContent">
         <div class="content-card">
-            <h1>Welcome, Student!</h1>
-            <p>Track your academic progress and access course materials.</p>
+            <h1>Welcome, Lecturer!</h1>
+            <p>Manage your courses, students, and academic activities.</p>
             
             <div class="stats-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-top: 2rem;">
                 <div class="stat-card" style="background: #f8f9fa; padding: 1.5rem; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
                     <div style="font-size: 2rem;">📚</div>
-                    <h3>Enrolled Courses</h3>
-                    <p style="font-size: 1.5rem; font-weight: bold; color: #2563eb;">6</p>
+                    <h3>Assigned Courses</h3>
+                    <p style="font-size: 1.5rem; font-weight: bold; color: #2563eb;">4</p>
+                </div>
+                <div class="stat-card" style="background: #f8f9fa; padding: 1.5rem; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                    <div style="font-size: 2rem;">👨‍🎓</div>
+                    <h3>Total Students</h3>
+                    <p style="font-size: 1.5rem; font-weight: bold; color: #2563eb;">142</p>
+                </div>
+                <div class="stat-card" style="background: #f8f9fa; padding: 1.5rem; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                    <div style="font-size: 2rem;">📅</div>
+                    <h3>Classes This Week</h3>
+                    <p style="font-size: 1.5rem; font-weight: bold; color: #2563eb;">12</p>
                 </div>
                 <div class="stat-card" style="background: #f8f9fa; padding: 1.5rem; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
                     <div style="font-size: 2rem;">🎯</div>
-                    <h3>GPA</h3>
-                    <p style="font-size: 1.5rem; font-weight: bold; color: #2563eb;">3.75</p>
-                </div>
-                <div class="stat-card" style="background: #f8f9fa; padding: 1.5rem; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-                    <div style="font-size: 2rem;">📝</div>
-                    <h3>Attendance</h3>
-                    <p style="font-size: 1.5rem; font-weight: bold; color: #2563eb;">92%</p>
-                </div>
-                <div class="stat-card" style="background: #f8f9fa; padding: 1.5rem; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-                    <div style="font-size: 2rem;">📄</div>
-                    <h3>Pending Assignments</h3>
-                    <p style="font-size: 1.5rem; font-weight: bold; color: #dc2626;">3</p>
+                    <h3>Pending Grades</h3>
+                    <p style="font-size: 1.5rem; font-weight: bold; color: #dc2626;">23</p>
                 </div>
             </div>
 
-            <div style="margin-top: 2rem; background: #fffbeb; padding: 1rem; border-radius: 8px; border-left: 4px solid #f59e0b;">
-                <h3 style="color: #92400e; margin-top: 0;">📌 Upcoming Deadlines</h3>
-                <ul style="color: #78350f;">
-                    <li>Mathematics Assignment - Due: Jan 5, 2026</li>
-                    <li>Physics Lab Report - Due: Jan 7, 2026</li>
-                    <li>English Essay - Due: Jan 10, 2026</li>
+            <div style="margin-top: 2rem; background: #dbeafe; padding: 1rem; border-radius: 8px; border-left: 4px solid #2563eb;">
+                <h3 style="color: #1e40af; margin-top: 0;">📅 Today's Schedule</h3>
+                <ul style="color: #1e3a8a;">
+                    <li>09:00 AM - Computer Science 101 (Room 204)</li>
+                    <li>11:00 AM - Data Structures (Room 305)</li>
+                    <li>02:00 PM - Office Hours</li>
+                    <li>04:00 PM - Faculty Meeting</li>
                 </ul>
             </div>
         </div>
     </main>
     
-    <script src="/main.js"></script>
+    <script src="/shared/main.js"></script>
 </body>
 </html>
