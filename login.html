@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - School Management System</title>
+    <link rel="stylesheet" href="login.css">
+</head>
+<body>    
+    <form id="loginForm" action="/login" method="post">
+        <h2>Login</h2>
+        <div id="errorMessage" style="display: none; color: #e74c3c; background: #fadbd8; padding: 10px; border-radius: 5px; margin-bottom: 15px; font-size: 14px;"></div>
+        <div>
+            <label for="email">Email Address:</label>
+            <input type="email" id="email" name="email" required>
+            <span class="error" id="emailError" style="color: #e74c3c; font-size: 12px; display: none;"></span>
+        </div>
+        <div>
+            <label for="password">Password:</label>
+            <input type="password" id="password" name="password" required minlength="6">
+            <span class="error" id="passwordError" style="color: #e74c3c; font-size: 12px; display: none;"></span>
+        </div>
+        <div>
+            <button type="submit">Login</button>
+        </div>
+    </form>    
+    <script src="login.js"></script>
+</body>
+</html>
