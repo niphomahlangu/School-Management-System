@@ -59,9 +59,17 @@ logoutButton.addEventListener('click', async () => {
     }
 });
 
-// Handle navigation link clicks
+// Handle navigation link clicks (only intercept hash links like #students)
 navLinks.forEach(link => {
     link.addEventListener('click', (e) => {
+        const href = link.getAttribute('href') || '';
+
+        // For normal page links (e.g. users.html), let the browser navigate
+        if (!href.startsWith('#')) {
+            return;
+        }
+
+        // For in-page/hash navigation, prevent default and handle manually
         e.preventDefault();
         
         // Remove active class from all links
@@ -78,7 +86,7 @@ navLinks.forEach(link => {
         }
         
         // Here you can add logic to load different content based on the clicked link
-        const section = link.getAttribute('href').substring(1);
+        const section = href.substring(1);
         console.log('Navigating to:', section);
     });
 });

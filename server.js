@@ -222,6 +222,155 @@ app.get('/home', noCache, isAuthenticated, (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
 
+// =========================
+// Admin Users Management API
+// =========================
+
+// Get all users (admin only)
+app.get('/api/admin/users', noCache, hasRole('admin'), (req, res) => {
+  const query = 'SELECT id, username, email, role, is_active FROM my_database.users';
+
+  connection.query(query, (err, results) => {
+    if (err) {
+      console.error('Error fetching users:', err);
+      return res.status(500).json({ message: 'Error fetching users' });
+    }
+    res.json(results);
+  });
+});
+
+// Create a new user (admin only)
+app.post('/api/admin/users', noCache, hasRole('admin'), async (req, res) => {
+  try {
+    const { name, email, role, password } = req.body;
+
+    if (!name || !email || !role || !password) {
+      return res.status(400).json({ message: 'Name, email, role and password are required' });
+    }
+
+    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailPattern.test(email)) {
+      return res.status(400).json({ message: 'Please provide a valid email address' });
+    }
+
+    if (password.length < 6) {
+      return res.status(400).json({ message: 'Password must be at least 6 characters' });
+    }
+
+    const passwordHash = await bcrypt.hash(password, 10);
+
+    const insertQuery = 'INSERT INTO users (name, email, role, password_hash, status) VALUES (?, ?, ?, ?, ?)';
+    const values = [name, email, role, passwordHash, 'active'];
+
+    connection.query(insertQuery, values, (err, result) => {
+      if (err) {
+        console.error('Error creating user:', err);
+        return res.status(500).json({ message: 'Error creating user' });
+      }
+      res.status(201).json({
+        id: result.insertId,
+        name,
+        email,
+        role,
+        status: 'active'
+      });
+    });
+  } catch (error) {
+    console.error('Error creating user:', error);
+    res.status(500).json({ message: 'Error creating user' });
+  }
+});
+
+// Update an existing user (admin only)
+app.put('/api/admin/users/:id', noCache, hasRole('admin'), async (req, res) => {
+  const userId = req.params.id;
+  const { name, email, role, password } = req.body;
+
+  if (!name || !email || !role) {
+    return res.status(400).json({ message: 'Name, email and role are required' });
+  }
+
+  const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailPattern.test(email)) {
+    return res.status(400).json({ message: 'Please provide a valid email address' });
+  }
+
+  try {
+    let updateQuery = 'UPDATE users SET name = ?, email = ?, role = ?';
+    const values = [name, email, role];
+
+    if (password && password.length >= 6) {
+      const passwordHash = await bcrypt.hash(password, 10);
+      updateQuery += ', password_hash = ?';
+      values.push(passwordHash);
+    }
+
+    updateQuery += ' WHERE id = ?';
+    values.push(userId);
+
+    connection.query(updateQuery, values, (err, result) => {
+      if (err) {
+        console.error('Error updating user:', err);
+        return res.status(500).json({ message: 'Error updating user' });
+      }
+      if (result.affectedRows === 0) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+      res.json({ message: 'User updated successfully' });
+    });
+  } catch (error) {
+    console.error('Error updating user:', error);
+    res.status(500).json({ message: 'Error updating user' });
+  }
+});
+
+// Archive / restore a user (toggle status) (admin only)
+app.patch('/api/admin/users/:id/status', noCache, hasRole('admin'), (req, res) => {
+  const userId = req.params.id;
+
+  // Toggle status between 'active' and 'archived'
+  const selectQuery = 'SELECT status FROM users WHERE id = ?';
+
+  connection.query(selectQuery, [userId], (err, results) => {
+    if (err) {
+      console.error('Error fetching user status:', err);
+      return res.status(500).json({ message: 'Error updating user status' });
+    }
+    if (results.length === 0) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    const currentStatus = results[0].status || 'active';
+    const newStatus = currentStatus === 'archived' ? 'active' : 'archived';
+
+    const updateQuery = 'UPDATE users SET status = ? WHERE id = ?';
+    connection.query(updateQuery, [newStatus, userId], (updateErr) => {
+      if (updateErr) {
+        console.error('Error updating user status:', updateErr);
+        return res.status(500).json({ message: 'Error updating user status' });
+      }
+      res.json({ message: 'User status updated', status: newStatus });
+    });
+  });
+});
+
+// Delete a user (admin only)
+app.delete('/api/admin/users/:id', noCache, hasRole('admin'), (req, res) => {
+  const userId = req.params.id;
+
+  const deleteQuery = 'DELETE FROM users WHERE id = ?';
+  connection.query(deleteQuery, [userId], (err, result) => {
+    if (err) {
+      console.error('Error deleting user:', err);
+      return res.status(500).json({ message: 'Error deleting user' });
+    }
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    res.json({ message: 'User deleted successfully' });
+  });
+});
+
 app.listen(port, () => {
   console.log(`Server running on http://localhost:${port}`);
 });
