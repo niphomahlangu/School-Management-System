@@ -195,9 +195,9 @@ function renderUsersTable() {
         
         let matchesStatus = true;
         if (statusFilter === 'active') {
-            matchesStatus = user.is_active === true;
+            matchesStatus = !!user.is_active;
         } else if (statusFilter === 'archived') {
-            matchesStatus = user.is_active === false;
+            matchesStatus = !user.is_active;
         }
 
         return matchesSearch && matchesStatus;
@@ -223,7 +223,7 @@ function renderUsersTable() {
                 </span>
             </td>
             <td style="padding: 12px; text-align: left;">
-                <span style="background: ${user.is_active === true ? '#c8e6c9' : '#ffccbc'}; color: ${user.is_active === true ? '#2e7d32' : '#d84315'}; padding: 4px 8px; border-radius: 4px; font-size: 0.875rem; font-weight: 500;">
+                <span style="background: ${user.is_active ? '#c8e6c9' : '#ffccbc'}; color: ${user.is_active ? '#2e7d32' : '#d84315'}; padding: 4px 8px; border-radius: 4px; font-size: 0.875rem; font-weight: 500;">
                     ${user.is_active ? 'Active' : 'Inactive'}
                 </span>
             </td>
