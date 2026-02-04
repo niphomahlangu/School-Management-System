@@ -3,6 +3,10 @@ let users = [];
 
 let currentEditingUserId = null;
 
+// Pagination state
+let currentPage = 1;
+const pageSize = 10; // users per page
+
 // Initialize user management on the dedicated users page
 document.addEventListener('DOMContentLoaded', () => {
     setupUserManagement();
@@ -23,8 +27,14 @@ function setupUserManagement() {
 
     //addUserBtn.addEventListener('click', openAddUserModal);
     //userForm.addEventListener('submit', handleUserFormSubmit);
-    searchUsers.addEventListener('input', renderUsersTable);
-    filterStatus.addEventListener('change', renderUsersTable);
+    searchUsers.addEventListener('input', () => {
+        currentPage = 1;
+        renderUsersTable();
+    });
+    filterStatus.addEventListener('change', () => {
+        currentPage = 1;
+        renderUsersTable();
+    });
 }
 
 // Load users from the server
@@ -155,7 +165,7 @@ async function loadUsers() {
     }
 } */
 
-/* async function archiveUser(userId) {
+async function archiveUser(userId) {
     try {
         const response = await fetch(`/api/admin/users/${userId}/status`, {
             method: 'PATCH'
@@ -171,7 +181,7 @@ async function loadUsers() {
         console.error('Error updating user status:', error);
         alert(error.message || 'Error updating user status. Please try again.');
     }
-} */
+}
 
 function renderUsersTable() {
     const tbody = document.getElementById('usersTableBody');
@@ -183,12 +193,26 @@ function renderUsersTable() {
                             user.email.toLowerCase().includes(searchTerm) ||
                             user.id.toString().includes(searchTerm);
         
-        const matchesStatus = !statusFilter || user.is_active.toString() === statusFilter;
+        let matchesStatus = true;
+        if (statusFilter === 'active') {
+            matchesStatus = user.is_active === true;
+        } else if (statusFilter === 'archived') {
+            matchesStatus = user.is_active === false;
+        }
 
         return matchesSearch && matchesStatus;
     });
 
-    tbody.innerHTML = filteredUsers.map(user => `
+    const totalItems = filteredUsers.length;
+    const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+    if (currentPage > totalPages) {
+        currentPage = totalPages;
+    }
+
+    const startIndex = (currentPage - 1) * pageSize;
+    const paginatedUsers = filteredUsers.slice(startIndex, startIndex + pageSize);
+
+    tbody.innerHTML = paginatedUsers.map(user => `
         <tr style="border-bottom: 1px solid #e0e0e0;">
             <td style="padding: 12px; text-align: left;">#${user.id}</td>
             <td style="padding: 12px; text-align: left;">${user.username}</td>
@@ -228,4 +252,66 @@ function renderUsersTable() {
             </tr>
         `;
     }
+
+    renderPaginationControls(totalItems);
+}
+
+function renderPaginationControls(totalItems) {
+    const container = document.getElementById('paginationControls');
+    if (!container) return;
+
+    container.innerHTML = '';
+
+    if (totalItems === 0) {
+        return;
+    }
+
+    const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+
+    const wrapper = document.createElement('div');
+    wrapper.style.display = 'flex';
+    wrapper.style.alignItems = 'center';
+    wrapper.style.justifyContent = 'flex-end';
+    wrapper.style.gap = '8px';
+
+    const prevBtn = document.createElement('button');
+    prevBtn.textContent = 'Previous';
+    prevBtn.style.padding = '6px 12px';
+    prevBtn.style.border = '1px solid #ddd';
+    prevBtn.style.background = '#f5f5f5';
+    prevBtn.style.borderRadius = '4px';
+    prevBtn.style.cursor = 'pointer';
+    prevBtn.disabled = currentPage === 1;
+    prevBtn.onclick = () => {
+        if (currentPage > 1) {
+            currentPage--;
+            renderUsersTable();
+        }
+    };
+
+    const infoSpan = document.createElement('span');
+    infoSpan.textContent = `Page ${currentPage} of ${totalPages}`;
+    infoSpan.style.fontSize = '0.9rem';
+    infoSpan.style.color = '#555';
+
+    const nextBtn = document.createElement('button');
+    nextBtn.textContent = 'Next';
+    nextBtn.style.padding = '6px 12px';
+    nextBtn.style.border = '1px solid #ddd';
+    nextBtn.style.background = '#f5f5f5';
+    nextBtn.style.borderRadius = '4px';
+    nextBtn.style.cursor = 'pointer';
+    nextBtn.disabled = currentPage >= totalPages;
+    nextBtn.onclick = () => {
+        if (currentPage < totalPages) {
+            currentPage++;
+            renderUsersTable();
+        }
+    };
+
+    wrapper.appendChild(prevBtn);
+    wrapper.appendChild(infoSpan);
+    wrapper.appendChild(nextBtn);
+
+    container.appendChild(wrapper);
 }

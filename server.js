@@ -329,7 +329,7 @@ app.patch('/api/admin/users/:id/status', noCache, hasRole('admin'), (req, res) =
   const userId = req.params.id;
 
   // Toggle status between 'active' and 'archived'
-  const selectQuery = 'SELECT status FROM users WHERE id = ?';
+  const selectQuery = 'SELECT is_active FROM my_database.users WHERE id = ?';
 
   connection.query(selectQuery, [userId], (err, results) => {
     if (err) {
@@ -340,11 +340,11 @@ app.patch('/api/admin/users/:id/status', noCache, hasRole('admin'), (req, res) =
       return res.status(404).json({ message: 'User not found' });
     }
 
-    const currentStatus = results[0].status || 'active';
+    const currentStatus = results[0].is_active ? 'active' : 'archived';
     const newStatus = currentStatus === 'archived' ? 'active' : 'archived';
 
-    const updateQuery = 'UPDATE users SET status = ? WHERE id = ?';
-    connection.query(updateQuery, [newStatus, userId], (updateErr) => {
+    const updateQuery = 'UPDATE my_database.users SET is_active = ? WHERE id = ?';
+    connection.query(updateQuery, [newStatus === 'active', userId], (updateErr) => {
       if (updateErr) {
         console.error('Error updating user status:', updateErr);
         return res.status(500).json({ message: 'Error updating user status' });
