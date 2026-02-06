@@ -242,25 +242,55 @@ app.get('/api/admin/users', noCache, hasRole('admin'), (req, res) => {
 // Create a new user (admin only)
 app.post('/api/admin/users', noCache, hasRole('admin'), async (req, res) => {
   try {
-    const { name, email, role, password } = req.body;
+    const { username, name, surname, role, password } = req.body;
 
-    if (!name || !email || !role || !password) {
-      return res.status(400).json({ message: 'Name, email, role and password are required' });
-    }
+    console.log('Received user creation request:', req.body);
 
-    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailPattern.test(email)) {
-      return res.status(400).json({ message: 'Please provide a valid email address' });
+    if (!name || !surname || !role || !password) {
+      return res.status(400).json({ message: 'Name, surname, role and password are required' });
     }
 
     if (password.length < 6) {
       return res.status(400).json({ message: 'Password must be at least 6 characters' });
     }
 
+    // Generate email from name with domain from environment variable
+    const emailDomain = process.env.EMAIL_DOMAIN || 'myinstitute.co.za';
+    let baseEmail = `${name.toLowerCase()}@${emailDomain}`;
+    let email = baseEmail;
+    
+    // Check if email already exists and add random 2-digit number if needed
+    let emailExists = true;
+    let attempts = 0;
+    const maxAttempts = 100;
+    
+    while (emailExists && attempts < maxAttempts) {
+      const checkQuery = 'SELECT id FROM users WHERE email = ?';
+      const emailCheckResult = await new Promise((resolve, reject) => {
+        connection.query(checkQuery, [email], (err, results) => {
+          if (err) reject(err);
+          else resolve(results);
+        });
+      });
+      
+      if (emailCheckResult.length === 0) {
+        emailExists = false;
+      } else {
+        // Generate random 2-digit number (10-99)
+        const randomNum = Math.floor(Math.random() * 90) + 10;
+        email = `${name.toLowerCase()}${randomNum}@${emailDomain}`;
+        attempts++;
+      }
+    }
+    
+    if (emailExists) {
+      return res.status(500).json({ message: 'Unable to generate unique email. Please try again.' });
+    }
+
     const passwordHash = await bcrypt.hash(password, 10);
 
-    const insertQuery = 'INSERT INTO users (name, email, role, password_hash, status) VALUES (?, ?, ?, ?, ?)';
-    const values = [name, email, role, passwordHash, 'active'];
+    const insertQuery = 'INSERT INTO my_database.users (username, email, password_hash, first_name, last_name, role, is_active) VALUES (?, ?, ?, ?, ?, ?, ?)';
+    const values = [username, email, passwordHash, name, surname, role, true];
 
     connection.query(insertQuery, values, (err, result) => {
       if (err) {
@@ -269,10 +299,10 @@ app.post('/api/admin/users', noCache, hasRole('admin'), async (req, res) => {
       }
       res.status(201).json({
         id: result.insertId,
-        name,
+        username,
         email,
         role,
-        status: 'active'
+        is_active: true
       });
     });
   } catch (error) {
@@ -284,20 +314,15 @@ app.post('/api/admin/users', noCache, hasRole('admin'), async (req, res) => {
 // Update an existing user (admin only)
 app.put('/api/admin/users/:id', noCache, hasRole('admin'), async (req, res) => {
   const userId = req.params.id;
-  const { name, email, role, password } = req.body;
+  const { username, role, password } = req.body;
 
-  if (!name || !email || !role) {
-    return res.status(400).json({ message: 'Name, email and role are required' });
-  }
-
-  const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!emailPattern.test(email)) {
-    return res.status(400).json({ message: 'Please provide a valid email address' });
+  if (!username || !role) {
+    return res.status(400).json({ message: 'Username and role are required' });
   }
 
   try {
-    let updateQuery = 'UPDATE users SET name = ?, email = ?, role = ?';
-    const values = [name, email, role];
+    let updateQuery = 'UPDATE users SET username = ?, role = ?';
+    const values = [username, role];
 
     if (password && password.length >= 6) {
       const passwordHash = await bcrypt.hash(password, 10);
