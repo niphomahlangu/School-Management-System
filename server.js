@@ -228,21 +228,35 @@ app.get('/home', noCache, isAuthenticated, (req, res) => {
 
 // Get all users (admin only)
 app.get('/api/admin/users', noCache, hasRole('admin'), (req, res) => {
-  const query = 'SELECT id, username, email, role, is_active FROM my_database.users';
+  const query = 'SELECT id, username, email, first_name, last_name, role, is_active FROM my_database.users';
 
   connection.query(query, (err, results) => {
     if (err) {
       console.error('Error fetching users:', err);
       return res.status(500).json({ message: 'Error fetching users' });
     }
-    res.json(results);
+    
+    // Ensure first_name and last_name are present, fallback to parsing username if needed
+    const processedResults = results.map(user => {
+      if (!user.first_name || !user.last_name) {
+        const nameParts = (user.username || '').split(' ');
+        return {
+          ...user,
+          first_name: user.first_name || nameParts[0] || '',
+          last_name: user.last_name || nameParts[1] || ''
+        };
+      }
+      return user;
+    });
+    
+    res.json(processedResults);
   });
 });
 
 // Create a new user (admin only)
 app.post('/api/admin/users', noCache, hasRole('admin'), async (req, res) => {
   try {
-    const { username, name, surname, role, password } = req.body;
+    let { username, email, name, surname, role, password } = req.body;
 
     console.log('Received user creation request:', req.body);
 
@@ -254,17 +268,47 @@ app.post('/api/admin/users', noCache, hasRole('admin'), async (req, res) => {
       return res.status(400).json({ message: 'Password must be at least 6 characters' });
     }
 
-    // Generate email from name with domain from environment variable
-    const emailDomain = process.env.EMAIL_DOMAIN || 'myinstitute.co.za';
-    let baseEmail = `${name.toLowerCase()}@${emailDomain}`;
-    let email = baseEmail;
-    
-    // Check if email already exists and add random 2-digit number if needed
-    let emailExists = true;
-    let attempts = 0;
-    const maxAttempts = 100;
-    
-    while (emailExists && attempts < maxAttempts) {
+    // If no email provided, generate one from name with domain from environment variable
+    if (!email || email.trim() === '') {
+      const emailDomain = process.env.EMAIL_DOMAIN || 'myinstitute.co.za';
+      let baseEmail = `${name.toLowerCase()}@${emailDomain}`;
+      email = baseEmail;
+      
+      // Check if email already exists and add random 2-digit number if needed
+      let emailExists = true;
+      let attempts = 0;
+      const maxAttempts = 100;
+      
+      while (emailExists && attempts < maxAttempts) {
+        const checkQuery = 'SELECT id FROM users WHERE email = ?';
+        const emailCheckResult = await new Promise((resolve, reject) => {
+          connection.query(checkQuery, [email], (err, results) => {
+            if (err) reject(err);
+            else resolve(results);
+          });
+        });
+        
+        if (emailCheckResult.length === 0) {
+          emailExists = false;
+        } else {
+          // Generate random 2-digit number (10-99)
+          const randomNum = Math.floor(Math.random() * 90) + 10;
+          email = `${name.toLowerCase()}${randomNum}@${emailDomain}`;
+          attempts++;
+        }
+      }
+      
+      if (emailExists) {
+        return res.status(500).json({ message: 'Unable to generate unique email. Please try again.' });
+      }
+    } else {
+      // Validate provided email format
+      const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailPattern.test(email)) {
+        return res.status(400).json({ message: 'Please provide a valid email address' });
+      }
+      
+      // Check if email already exists
       const checkQuery = 'SELECT id FROM users WHERE email = ?';
       const emailCheckResult = await new Promise((resolve, reject) => {
         connection.query(checkQuery, [email], (err, results) => {
@@ -273,18 +317,9 @@ app.post('/api/admin/users', noCache, hasRole('admin'), async (req, res) => {
         });
       });
       
-      if (emailCheckResult.length === 0) {
-        emailExists = false;
-      } else {
-        // Generate random 2-digit number (10-99)
-        const randomNum = Math.floor(Math.random() * 90) + 10;
-        email = `${name.toLowerCase()}${randomNum}@${emailDomain}`;
-        attempts++;
+      if (emailCheckResult.length > 0) {
+        return res.status(400).json({ message: 'Email already exists. Please use a different email.' });
       }
-    }
-    
-    if (emailExists) {
-      return res.status(500).json({ message: 'Unable to generate unique email. Please try again.' });
     }
 
     const passwordHash = await bcrypt.hash(password, 10);
@@ -376,23 +411,6 @@ app.patch('/api/admin/users/:id/status', noCache, hasRole('admin'), (req, res) =
       }
       res.json({ message: 'User status updated', status: newStatus });
     });
-  });
-});
-
-// Delete a user (admin only)
-app.delete('/api/admin/users/:id', noCache, hasRole('admin'), (req, res) => {
-  const userId = req.params.id;
-
-  const deleteQuery = 'DELETE FROM users WHERE id = ?';
-  connection.query(deleteQuery, [userId], (err, result) => {
-    if (err) {
-      console.error('Error deleting user:', err);
-      return res.status(500).json({ message: 'Error deleting user' });
-    }
-    if (result.affectedRows === 0) {
-      return res.status(404).json({ message: 'User not found' });
-    }
-    res.json({ message: 'User deleted successfully' });
   });
 });
 
