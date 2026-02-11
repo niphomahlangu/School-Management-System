@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Students - School Management System</title>
+    <link rel="stylesheet" href="/shared/index.css">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <button class="menu-toggle" id="menuToggle">
+            <span>☰</span>
+        </button>
+        <h1 class="header-title">Student Management</h1>
+        <div class="user-profile">
+            <button class="profile-button" id="profileButton">
+                <div class="profile-icon">A</div>
+                <span class="profile-name">Admin</span>
+                <span class="dropdown-arrow">▼</span>
+            </button>
+            <div class="dropdown-menu" id="dropdownMenu">
+                <a href="#profile">My Profile</a>
+                <a href="#settings">Settings</a>
+                <div class="divider"></div>
+                <button class="logout-button" id="logoutButton">Logout</button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Sidebar Navigation -->
+    <nav class="sidebar" id="sidebar">
+        <ul class="sidebar-nav">
+            <li><a href="index.html"><span class="nav-icon">📊</span> Dashboard</a></li>
+            <li><a href="users.html"><span class="nav-icon">👥</span> Manage Users</a></li>
+            <li><a href="students.html" class="active"><span class="nav-icon">👨‍🎓</span> Students</a></li>
+            <li><a href="#lecturers"><span class="nav-icon">👨‍🏫</span> Lecturers</a></li>
+            <li><a href="#courses"><span class="nav-icon">📚</span> Courses</a></li>
+            <li><a href="#departments"><span class="nav-icon">🏛️</span> Departments</a></li>
+            <li><a href="#enrollment"><span class="nav-icon">📝</span> Enrollment</a></li>
+            <li><a href="#reports"><span class="nav-icon">📈</span> Reports</a></li>
+            <li><a href="#settings"><span class="nav-icon">⚙️</span> System Settings</a></li>
+        </ul>
+    </nav>
+
+    <!-- Overlay for mobile -->
+    <div class="overlay" id="overlay"></div>
+
+    <!-- Main Content -->
+    <main class="main-content" id="mainContent">
+        <div class="content-card">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+                <h1>Manage Students</h1>
+                <button id="addStudentBtn" class="btn btn-primary">+ Add Student</button>
+            </div>
+
+            <!-- Filter and Search -->
+            <div style="display: flex; gap: 1rem; margin-bottom: 1.5rem; flex-wrap: wrap;">
+                <input type="text" id="searchStudents" placeholder="Search by name, student ID, or email..." class="search-input" style="flex: 1; min-width: 200px;">
+                <select id="filterDepartment" class="filter-select" style="min-width: 150px;">
+                    <option value="">All Departments</option>
+                    <option value="Computer Science">Computer Science</option>
+                    <option value="Engineering">Engineering</option>
+                    <option value="Business">Business</option>
+                    <option value="Medicine">Medicine</option>
+                    <option value="Arts">Arts</option>
+                </select>
+                <select id="filterYear" class="filter-select" style="min-width: 120px;">
+                    <option value="">All Years</option>
+                    <option value="1">Year 1</option>
+                    <option value="2">Year 2</option>
+                    <option value="3">Year 3</option>
+                    <option value="4">Year 4</option>
+                </select>
+                <select id="filterStatus" class="filter-select" style="min-width: 120px;">
+                    <option value="">All Status</option>
+                    <option value="Active">Active</option>
+                    <option value="Suspended">Suspended</option>
+                    <option value="Graduated">Graduated</option>
+                </select>
+            </div>
+
+            <!-- Students Table -->
+            <div class="table-container" style="overflow-x: auto;">
+                <table class="students-table" style="width: 100%; border-collapse: collapse;">
+                    <thead style="background: #f8f9fa;">
+                        <tr>
+                            <th style="padding: 12px; text-align: left; font-weight: 600; border-bottom: 2px solid #e0e0e0;">Student ID</th>
+                            <th style="padding: 12px; text-align: left; font-weight: 600; border-bottom: 2px solid #e0e0e0;">Name</th>
+                            <th style="padding: 12px; text-align: left; font-weight: 600; border-bottom: 2px solid #e0e0e0;">Email</th>
+                            <th style="padding: 12px; text-align: left; font-weight: 600; border-bottom: 2px solid #e0e0e0;">Department</th>
+                            <th style="padding: 12px; text-align: left; font-weight: 600; border-bottom: 2px solid #e0e0e0;">Year</th>
+                            <th style="padding: 12px; text-align: left; font-weight: 600; border-bottom: 2px solid #e0e0e0;">GPA</th>
+                            <th style="padding: 12px; text-align: left; font-weight: 600; border-bottom: 2px solid #e0e0e0;">Status</th>
+                            <th style="padding: 12px; text-align: center; font-weight: 600; border-bottom: 2px solid #e0e0e0;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="studentsTableBody">
+                        <!-- Students will be populated here -->
+                    </tbody>
+                </table>
+            </div>
+            <div id="paginationControls" style="margin-top: 1rem; display: flex; justify-content: flex-end;"></div>
+        </div>
+    </main>
+
+    <!-- Add/Edit Student Modal -->
+    <div id="studentModal" class="modal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; justify-content: center; align-items: center; z-index: 1000;">
+        <div class="modal-content" style="background: white; border-radius: 8px; padding: 2rem; max-width: 600px; width: 90%; box-shadow: 0 10px 40px rgba(0,0,0,0.2); max-height: 90vh; overflow-y: auto;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                <h2 id="modalTitle">Add Student</h2>
+                <button class="close-modal" onclick="closeStudentModal()" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #666;">&times;</button>
+            </div>
+            <form id="studentForm">
+                <h3 style="margin-bottom: 1rem; color: #2563eb; border-bottom: 2px solid #e0e0e0; padding-bottom: 0.5rem;">Personal Information</h3>
+                
+                <div style="margin-bottom: 1rem;">
+                    <label for="studentFirstName" style="display: block; margin-bottom: 0.5rem; font-weight: 500;">First Name *</label>
+                    <input type="text" id="studentFirstName" required style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px; font-size: 1rem;">
+                </div>
+
+                <div style="margin-bottom: 1rem;">
+                    <label for="studentLastName" style="display: block; margin-bottom: 0.5rem; font-weight: 500;">Last Name *</label>
+                    <input type="text" id="studentLastName" required style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px; font-size: 1rem;">
+                </div>
+
+                <div style="margin-bottom: 1rem;">
+                    <label for="studentEmail" style="display: block; margin-bottom: 0.5rem; font-weight: 500;">Email *</label>
+                    <input type="email" id="studentEmail" required style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px; font-size: 1rem;">
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+                    <div>
+                        <label for="studentPhone" style="display: block; margin-bottom: 0.5rem; font-weight: 500;">Phone Number</label>
+                        <input type="tel" id="studentPhone" style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px; font-size: 1rem;">
+                    </div>
+                    <div>
+                        <label for="studentDOB" style="display: block; margin-bottom: 0.5rem; font-weight: 500;">Date of Birth *</label>
+                        <input type="date" id="studentDOB" required style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px; font-size: 1rem;">
+                    </div>
+                </div>
+
+                <div style="margin-bottom: 1rem;">
+                    <label for="studentAddress" style="display: block; margin-bottom: 0.5rem; font-weight: 500;">Address</label>
+                    <textarea id="studentAddress" rows="2" style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px; font-size: 1rem; resize: vertical;"></textarea>
+                </div>
+
+                <h3 style="margin: 1.5rem 0 1rem; color: #2563eb; border-bottom: 2px solid #e0e0e0; padding-bottom: 0.5rem;">Academic Information</h3>
+
+                <div style="margin-bottom: 1rem;">
+                    <label for="studentDepartment" style="display: block; margin-bottom: 0.5rem; font-weight: 500;">Department *</label>
+                    <select id="studentDepartment" required style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px; font-size: 1rem;">
+                        <option value="">Select Department</option>
+                        <option value="Computer Science">Computer Science</option>
+                        <option value="Engineering">Engineering</option>
+                        <option value="Business">Business</option>
+                        <option value="Medicine">Medicine</option>
+                        <option value="Arts">Arts</option>
+                    </select>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+                    <div>
+                        <label for="studentYear" style="display: block; margin-bottom: 0.5rem; font-weight: 500;">Year Level *</label>
+                        <select id="studentYear" required style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px; font-size: 1rem;">
+                            <option value="">Select Year</option>
+                            <option value="1">Year 1</option>
+                            <option value="2">Year 2</option>
+                            <option value="3">Year 3</option>
+                            <option value="4">Year 4</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="studentEnrollmentDate" style="display: block; margin-bottom: 0.5rem; font-weight: 500;">Enrollment Date *</label>
+                        <input type="date" id="studentEnrollmentDate" required style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px; font-size: 1rem;">
+                    </div>
+                </div>
+
+                <div style="margin-bottom: 1rem;">
+                    <label for="studentStatus" style="display: block; margin-bottom: 0.5rem; font-weight: 500;">Status *</label>
+                    <select id="studentStatus" required style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px; font-size: 1rem;">
+                        <option value="Active">Active</option>
+                        <option value="Suspended">Suspended</option>
+                        <option value="Graduated">Graduated</option>
+                    </select>
+                </div>
+
+                <h3 style="margin: 1.5rem 0 1rem; color: #2563eb; border-bottom: 2px solid #e0e0e0; padding-bottom: 0.5rem;">Emergency Contact</h3>
+
+                <div style="margin-bottom: 1rem;">
+                    <label for="emergencyContactName" style="display: block; margin-bottom: 0.5rem; font-weight: 500;">Emergency Contact Name</label>
+                    <input type="text" id="emergencyContactName" style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px; font-size: 1rem;">
+                </div>
+
+                <div style="margin-bottom: 1.5rem;">
+                    <label for="emergencyContactPhone" style="display: block; margin-bottom: 0.5rem; font-weight: 500;">Emergency Contact Phone</label>
+                    <input type="tel" id="emergencyContactPhone" style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px; font-size: 1rem;">
+                </div>
+
+                <div style="display: flex; gap: 1rem; justify-content: flex-end;">
+                    <button type="button" onclick="closeStudentModal()" class="btn btn-secondary" style="padding: 0.75rem 1.5rem; border: 1px solid #ddd; background: #f5f5f5; border-radius: 4px; cursor: pointer;">Cancel</button>
+                    <button type="submit" class="btn btn-primary" style="padding: 0.75rem 1.5rem; background: #2563eb; color: white; border: none; border-radius: 4px; cursor: pointer;">Save Student</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- View Student Details Modal -->
+    <div id="viewStudentModal" class="modal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; justify-content: center; align-items: center; z-index: 1000;">
+        <div class="modal-content" style="background: white; border-radius: 8px; padding: 2rem; max-width: 700px; width: 90%; box-shadow: 0 10px 40px rgba(0,0,0,0.2); max-height: 90vh; overflow-y: auto;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                <h2>Student Details</h2>
+                <button class="close-modal" onclick="closeViewStudentModal()" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #666;">&times;</button>
+            </div>
+            <div id="studentDetailsContent">
+                <!-- Student details will be populated here -->
+            </div>
+            <div style="display: flex; gap: 1rem; justify-content: flex-end; margin-top: 2rem;">
+                <button type="button" onclick="closeViewStudentModal()" class="btn btn-secondary" style="padding: 0.75rem 1.5rem; border: 1px solid #ddd; background: #f5f5f5; border-radius: 4px; cursor: pointer;">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Overlay -->
+    <div id="modalOverlay" class="modal-overlay" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 500;"></div>
+    
+    <script src="/shared/main.js"></script>
+    <script src="/admin/students.js"></script>
+</body>
+</html>
