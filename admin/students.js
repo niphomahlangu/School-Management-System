@@ -65,50 +65,11 @@ async function loadStudents() {
         renderStudentsTable();
     } catch (error) {
         console.error('Error loading students:', error);
-        // For demo purposes, use mock data
-        students = generateMockStudents();
-        renderStudentsTable();
+        alert('Error loading students from database.');
     }
 }
 
-// Generate mock students for demonstration
-function generateMockStudents() {
-    const departments = ['Computer Science', 'Engineering', 'Business', 'Medicine', 'Arts'];
-    const statuses = ['Active', 'Active', 'Active', 'Active', 'Suspended', 'Graduated'];
-    const firstNames = ['John', 'Sarah', 'Michael', 'Emily', 'David', 'Jessica', 'Daniel', 'Ashley', 'James', 'Lisa', 
-                       'Robert', 'Jennifer', 'William', 'Michelle', 'Christopher', 'Amanda', 'Matthew', 'Melissa', 'Joshua', 'Stephanie'];
-    const lastNames = ['Smith', 'Johnson', 'Williams', 'Brown', 'Jones', 'Garcia', 'Miller', 'Davis', 'Rodriguez', 'Martinez',
-                      'Hernandez', 'Lopez', 'Gonzalez', 'Wilson', 'Anderson', 'Thomas', 'Taylor', 'Moore', 'Jackson', 'Martin'];
 
-    const mockStudents = [];
-    for (let i = 1; i <= 50; i++) {
-        const firstName = firstNames[Math.floor(Math.random() * firstNames.length)];
-        const lastName = lastNames[Math.floor(Math.random() * lastNames.length)];
-        const department = departments[Math.floor(Math.random() * departments.length)];
-        const year = Math.floor(Math.random() * 4) + 1;
-        const gpa = (Math.random() * 2 + 2).toFixed(2); // GPA between 2.00 and 4.00
-        const status = statuses[Math.floor(Math.random() * statuses.length)];
-
-        mockStudents.push({
-            id: i,
-            studentId: `STU${2024000 + i}`,
-            firstName: firstName,
-            lastName: lastName,
-            email: `${firstName.toLowerCase()}.${lastName.toLowerCase()}@myinstitute.co.za`,
-            phone: `+27 ${Math.floor(Math.random() * 90 + 10)} ${Math.floor(Math.random() * 900 + 100)} ${Math.floor(Math.random() * 9000 + 1000)}`,
-            dateOfBirth: `199${Math.floor(Math.random() * 10)}-${String(Math.floor(Math.random() * 12) + 1).padStart(2, '0')}-${String(Math.floor(Math.random() * 28) + 1).padStart(2, '0')}`,
-            address: `${Math.floor(Math.random() * 999) + 1} Main Street, City, Province`,
-            department: department,
-            year: year,
-            enrollmentDate: `202${Math.floor(Math.random() * 3) + 2}-02-01`,
-            gpa: gpa,
-            status: status,
-            emergencyContactName: `${firstNames[Math.floor(Math.random() * firstNames.length)]} ${lastNames[Math.floor(Math.random() * lastNames.length)]}`,
-            emergencyContactPhone: `+27 ${Math.floor(Math.random() * 90 + 10)} ${Math.floor(Math.random() * 900 + 100)} ${Math.floor(Math.random() * 9000 + 1000)}`
-        });
-    }
-    return mockStudents;
-}
 
 function renderStudentsTable() {
     const searchQuery = document.getElementById('searchStudents').value.toLowerCase();
@@ -119,7 +80,7 @@ function renderStudentsTable() {
     // Filter students
     const filteredStudents = students.filter(student => {
         const matchesSearch = !searchQuery || 
-            student.studentId.toLowerCase().includes(searchQuery) ||
+            student.studentNumber.toLowerCase().includes(searchQuery) ||
             `${student.firstName} ${student.lastName}`.toLowerCase().includes(searchQuery) ||
             student.email.toLowerCase().includes(searchQuery);
         
@@ -149,7 +110,7 @@ function renderStudentsTable() {
         const row = document.createElement('tr');
         row.style.borderBottom = '1px solid #e0e0e0';
         row.innerHTML = `
-            <td style="padding: 12px;">${student.studentId}</td>
+            <td style="padding: 12px;">${student.studentNumber}</td>
             <td style="padding: 12px;">${student.firstName} ${student.lastName}</td>
             <td style="padding: 12px;">${student.email}</td>
             <td style="padding: 12px;">${student.department}</td>
@@ -163,7 +124,7 @@ function renderStudentsTable() {
             </td>
             <td style="padding: 12px; text-align: center; position: relative;">
                 <div class="action-dropdown" style="display: inline-block; position: relative;">
-                    <button onclick="toggleActionMenu(event, ${student.id})" class="btn btn-sm" style="padding: 0.4rem 0.8rem; background: #6b7280; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 1.2rem; line-height: 1;">⋮</button>
+                    <button onclick="toggleActionMenu(event, ${student.studentNumber})" class="btn btn-sm" style="padding: 0.4rem 0.8rem; background: #6b7280; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 1.2rem; line-height: 1;">⋮</button>
                     <div id="menu-${student.id}" class="action-menu" style="display: none; position: absolute; right: 0; top: 100%; background: white; border: 1px solid #ddd; border-radius: 4px; box-shadow: 0 2px 8px rgba(0,0,0,0.15); min-width: 120px; z-index: 1000; margin-top: 0.25rem;">
                         <button onclick="viewStudent(${student.id}); toggleActionMenu(event, ${student.id})" onmouseover="this.style.backgroundColor='#d1fae5'" onmouseout="this.style.backgroundColor=''" style="display: block; width: 100%; padding: 0.75rem 1rem; text-align: left; border: none; background: none; cursor: pointer; color: #10b981; font-weight: 500; transition: background-color 0.2s;">View</button>
                         <button onclick="openEditStudentModal(${student.id}); toggleActionMenu(event, ${student.id})" onmouseover="this.style.backgroundColor='#dbeafe'" onmouseout="this.style.backgroundColor=''" style="display: block; width: 100%; padding: 0.75rem 1rem; text-align: left; border: none; background: none; cursor: pointer; color: #2563eb; font-weight: 500; transition: background-color 0.2s;">Edit</button>

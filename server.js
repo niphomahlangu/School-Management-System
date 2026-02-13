@@ -414,6 +414,272 @@ app.patch('/api/admin/users/:id/status', noCache, hasRole('admin'), (req, res) =
   });
 });
 
+// =========================
+// Admin Students Management API
+// =========================
+
+// Get all students (admin only)
+app.get('/api/admin/students', noCache, hasRole('admin'), (req, res) => {
+  const query = `
+    SELECT 
+      s.studentNumber,
+      s.user_id,
+      s.dateOfBirth,
+      s.phone,
+      s.address,
+      s.department,
+      s.year,
+      s.enrollmentDate,
+      s.gpa,
+      s.status,
+      s.emergencyContactName,
+      s.emergencyContactPhone,
+      u.id,
+      u.first_name,
+      u.last_name,
+      u.email
+    FROM my_database.students s
+    JOIN my_database.users u ON s.user_id = u.id
+    ORDER BY s.studentNumber DESC
+  `;
+
+  connection.query(query, (err, results) => {
+    if (err) {
+      console.error('Error fetching students:', err);
+      return res.status(500).json({ message: 'Error fetching students' });
+    }
+    
+    // Format results to match the frontend expectations
+    const formattedResults = results.map(student => ({
+      id: student.user_id,
+      studentNumber: student.studentNumber,
+      firstName: student.first_name,
+      lastName: student.last_name,
+      email: student.email,
+      phone: student.phone,
+      address: student.address,
+      dateOfBirth: student.dateOfBirth,
+      department: student.department,
+      year: student.year,
+      enrollmentDate: student.enrollmentDate,
+      gpa: student.gpa,
+      status: student.status,
+      emergencyContactName: student.emergencyContactName,
+      emergencyContactPhone: student.emergencyContactPhone
+    }));
+
+    
+    res.json(formattedResults);
+  });
+});
+
+// Create a new student (admin only)
+app.post('/api/admin/students', noCache, hasRole('admin'), async (req, res) => {
+  try {
+    const { 
+      firstName, 
+      lastName, 
+      email, 
+      phone, 
+      dateOfBirth, 
+      address, 
+      department, 
+      year, 
+      enrollmentDate, 
+      gpa, 
+      status, 
+      emergencyContactName, 
+      emergencyContactPhone,
+      password 
+    } = req.body;
+
+    // Validate required fields
+    if (!firstName || !lastName || !email || !dateOfBirth || !password) {
+      return res.status(400).json({ message: 'First name, last name, email, date of birth, and password are required' });
+    }
+
+    if (password.length < 6) {
+      return res.status(400).json({ message: 'Password must be at least 6 characters' });
+    }
+
+    // Check if email already exists
+    const emailCheckQuery = 'SELECT id FROM users WHERE email = ?';
+    const emailCheckResult = await new Promise((resolve, reject) => {
+      connection.query(emailCheckQuery, [email], (err, results) => {
+        if (err) reject(err);
+        else resolve(results);
+      });
+    });
+
+    if (emailCheckResult.length > 0) {
+      return res.status(400).json({ message: 'Email already exists' });
+    }
+
+    // Hash password
+    const passwordHash = await bcrypt.hash(password, 10);
+
+    // Generate username from email
+    const username = email.split('@')[0];
+
+    // Insert user first
+    const insertUserQuery = 'INSERT INTO my_database.users (username, email, password_hash, first_name, last_name, role, is_active) VALUES (?, ?, ?, ?, ?, ?, ?)';
+    
+    const userId = await new Promise((resolve, reject) => {
+      connection.query(insertUserQuery, [username, email, passwordHash, firstName, lastName, 'student', true], (err, result) => {
+        if (err) reject(err);
+        else resolve(result.insertId);
+      });
+    });
+
+    // Generate student number
+    const studentNumber = `STU${2024000 + userId}`;
+
+    // Insert student record
+    const insertStudentQuery = `
+      INSERT INTO my_database.students (
+        user_id, 
+        studentNumber, 
+        dateOfBirth, 
+        phone, 
+        address, 
+        department, 
+        year, 
+        enrollmentDate, 
+        gpa, 
+        status, 
+        emergencyContactName, 
+        emergencyContactPhone
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `;
+
+    await new Promise((resolve, reject) => {
+      connection.query(insertStudentQuery, [
+        userId,
+        studentNumber,
+        dateOfBirth,
+        phone || null,
+        address || null,
+        department || null,
+        year || 1,
+        enrollmentDate || null,
+        gpa || null,
+        status || 'Active',
+        emergencyContactName || null,
+        emergencyContactPhone || null
+      ], (err, result) => {
+        if (err) reject(err);
+        else resolve(result);
+      });
+    });
+
+    res.status(201).json({
+      id: userId,
+      studentId: studentNumber,
+      firstName,
+      lastName,
+      email,
+      status: 'Success'
+    });
+  } catch (error) {
+    console.error('Error creating student:', error);
+    res.status(500).json({ message: 'Error creating student' });
+  }
+});
+
+// Update an existing student (admin only)
+app.put('/api/admin/students/:id', noCache, hasRole('admin'), async (req, res) => {
+  try {
+    const userId = req.params.id;
+    const { 
+      firstName, 
+      lastName, 
+      email, 
+      phone, 
+      dateOfBirth, 
+      address, 
+      department, 
+      year, 
+      enrollmentDate, 
+      gpa, 
+      status, 
+      emergencyContactName, 
+      emergencyContactPhone 
+    } = req.body;
+
+    // Update user information
+    const updateUserQuery = 'UPDATE my_database.users SET first_name = ?, last_name = ?, email = ? WHERE id = ?';
+    
+    await new Promise((resolve, reject) => {
+      connection.query(updateUserQuery, [firstName, lastName, email, userId], (err, result) => {
+        if (err) reject(err);
+        else resolve(result);
+      });
+    });
+
+    // Update student information
+    const updateStudentQuery = `
+      UPDATE my_database.students 
+      SET dateOfBirth = ?, phone = ?, address = ?, department = ?, year = ?, 
+          enrollmentDate = ?, gpa = ?, status = ?, emergencyContactName = ?, emergencyContactPhone = ?
+      WHERE user_id = ?
+    `;
+
+    await new Promise((resolve, reject) => {
+      connection.query(updateStudentQuery, [
+        dateOfBirth,
+        phone || null,
+        address || null,
+        department || null,
+        year || 1,
+        enrollmentDate || null,
+        gpa || null,
+        status || 'Active',
+        emergencyContactName || null,
+        emergencyContactPhone || null,
+        userId
+      ], (err, result) => {
+        if (err) reject(err);
+        else resolve(result);
+      });
+    });
+
+    res.json({ message: 'Student updated successfully' });
+  } catch (error) {
+    console.error('Error updating student:', error);
+    res.status(500).json({ message: 'Error updating student' });
+  }
+});
+
+// Delete a student (admin only)
+app.delete('/api/admin/students/:id', noCache, hasRole('admin'), async (req, res) => {
+  try {
+    const userId = req.params.id;
+
+    // Delete student record first
+    const deleteStudentQuery = 'DELETE FROM my_database.students WHERE user_id = ?';
+    await new Promise((resolve, reject) => {
+      connection.query(deleteStudentQuery, [userId], (err, result) => {
+        if (err) reject(err);
+        else resolve(result);
+      });
+    });
+
+    // Delete user record
+    const deleteUserQuery = 'DELETE FROM my_database.users WHERE id = ?';
+    await new Promise((resolve, reject) => {
+      connection.query(deleteUserQuery, [userId], (err, result) => {
+        if (err) reject(err);
+        else resolve(result);
+      });
+    });
+
+    res.json({ message: 'Student deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting student:', error);
+    res.status(500).json({ message: 'Error deleting student' });
+  }
+});
+
 app.listen(port, () => {
   console.log(`Server running on http://localhost:${port}`);
 });
