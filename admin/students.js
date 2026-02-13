@@ -161,10 +161,15 @@ function renderStudentsTable() {
                     ${student.status}
                 </span>
             </td>
-            <td style="padding: 12px; text-align: center;">
-                <button onclick="viewStudent(${student.id})" class="btn btn-sm" style="margin-right: 0.5rem; padding: 0.4rem 0.8rem; background: #10b981; color: white; border: none; border-radius: 4px; cursor: pointer;">View</button>
-                <button onclick="openEditStudentModal(${student.id})" class="btn btn-sm" style="margin-right: 0.5rem; padding: 0.4rem 0.8rem; background: #2563eb; color: white; border: none; border-radius: 4px; cursor: pointer;">Edit</button>
-                <button onclick="deleteStudent(${student.id})" class="btn btn-sm btn-danger" style="padding: 0.4rem 0.8rem; background: #dc2626; color: white; border: none; border-radius: 4px; cursor: pointer;">Delete</button>
+            <td style="padding: 12px; text-align: center; position: relative;">
+                <div class="action-dropdown" style="display: inline-block; position: relative;">
+                    <button onclick="toggleActionMenu(event, ${student.id})" class="btn btn-sm" style="padding: 0.4rem 0.8rem; background: #6b7280; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 1.2rem; line-height: 1;">⋮</button>
+                    <div id="menu-${student.id}" class="action-menu" style="display: none; position: absolute; right: 0; top: 100%; background: white; border: 1px solid #ddd; border-radius: 4px; box-shadow: 0 2px 8px rgba(0,0,0,0.15); min-width: 120px; z-index: 1000; margin-top: 0.25rem;">
+                        <button onclick="viewStudent(${student.id}); toggleActionMenu(event, ${student.id})" onmouseover="this.style.backgroundColor='#d1fae5'" onmouseout="this.style.backgroundColor=''" style="display: block; width: 100%; padding: 0.75rem 1rem; text-align: left; border: none; background: none; cursor: pointer; color: #10b981; font-weight: 500; transition: background-color 0.2s;">View</button>
+                        <button onclick="openEditStudentModal(${student.id}); toggleActionMenu(event, ${student.id})" onmouseover="this.style.backgroundColor='#dbeafe'" onmouseout="this.style.backgroundColor=''" style="display: block; width: 100%; padding: 0.75rem 1rem; text-align: left; border: none; background: none; cursor: pointer; color: #2563eb; font-weight: 500; transition: background-color 0.2s;">Edit</button>
+                        <button onclick="deleteStudent(${student.id}); toggleActionMenu(event, ${student.id})" onmouseover="this.style.backgroundColor='#fee2e2'" onmouseout="this.style.backgroundColor=''" style="display: block; width: 100%; padding: 0.75rem 1rem; text-align: left; border: none; background: none; cursor: pointer; color: #dc2626; font-weight: 500; transition: background-color 0.2s;">Delete</button>
+                    </div>
+                </div>
             </td>
         `;
         tbody.appendChild(row);
@@ -190,6 +195,28 @@ function getStatusTextColor(status) {
         default: return '#374151';
     }
 }
+
+function toggleActionMenu(event, studentId) {
+    event.stopPropagation();
+    const menu = document.getElementById(`menu-${studentId}`);
+    const isOpen = menu.style.display === 'flex';
+    
+    // Close all other menus
+    document.querySelectorAll('.action-menu').forEach(m => {
+        m.style.display = 'none';
+    });
+    
+    // Toggle current menu
+    menu.style.display = isOpen ? 'none' : 'flex';
+    menu.style.flexDirection = 'column';
+}
+
+// Close dropdown when clicking outside
+document.addEventListener('click', () => {
+    document.querySelectorAll('.action-menu').forEach(menu => {
+        menu.style.display = 'none';
+    });
+});
 
 function renderPagination(totalPages, totalItems) {
     const paginationControls = document.getElementById('paginationControls');
