@@ -422,6 +422,7 @@ app.patch('/api/admin/users/:id/status', noCache, hasRole('admin'), (req, res) =
 app.get('/api/admin/students', noCache, hasRole('admin'), (req, res) => {
   const query = `
     SELECT 
+      s.studentId,
       s.studentNumber,
       s.user_id,
       s.dateOfBirth,
@@ -440,7 +441,7 @@ app.get('/api/admin/students', noCache, hasRole('admin'), (req, res) => {
       u.email
     FROM my_database.students s
     JOIN my_database.users u ON s.user_id = u.id
-    ORDER BY s.studentNumber DESC
+    ORDER BY s.studentId DESC
   `;
 
   connection.query(query, (err, results) => {
@@ -451,7 +452,7 @@ app.get('/api/admin/students', noCache, hasRole('admin'), (req, res) => {
     
     // Format results to match the frontend expectations
     const formattedResults = results.map(student => ({
-      id: student.user_id,
+      id: student.studentId,
       studentNumber: student.studentNumber,
       firstName: student.first_name,
       lastName: student.last_name,

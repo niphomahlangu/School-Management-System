@@ -61,7 +61,6 @@ async function loadStudents() {
             throw new Error('Failed to load students');
         }
         students = await response.json();
-        console.log('Students:', students);
         renderStudentsTable();
     } catch (error) {
         console.error('Error loading students:', error);
@@ -110,6 +109,7 @@ function renderStudentsTable() {
         const row = document.createElement('tr');
         row.style.borderBottom = '1px solid #e0e0e0';
         row.innerHTML = `
+            <td style="padding: 12px; display: none;">${student.id}</td>
             <td style="padding: 12px;">${student.studentNumber}</td>
             <td style="padding: 12px;">${student.firstName} ${student.lastName}</td>
             <td style="padding: 12px;">${student.email}</td>
@@ -124,7 +124,7 @@ function renderStudentsTable() {
             </td>
             <td style="padding: 12px; text-align: center; position: relative;">
                 <div class="action-dropdown" style="display: inline-block; position: relative;">
-                    <button onclick="toggleActionMenu(event, ${student.studentNumber})" class="btn btn-sm" style="padding: 0.4rem 0.8rem; background: #6b7280; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 1.2rem; line-height: 1;">⋮</button>
+                    <button onclick="toggleActionMenu(event, ${student.id})" class="btn btn-sm" style="padding: 0.4rem 0.8rem; background: #6b7280; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 1.2rem; line-height: 1;">⋮</button>
                     <div id="menu-${student.id}" class="action-menu" style="display: none; position: absolute; right: 0; top: 100%; background: white; border: 1px solid #ddd; border-radius: 4px; box-shadow: 0 2px 8px rgba(0,0,0,0.15); min-width: 120px; z-index: 1000; margin-top: 0.25rem;">
                         <button onclick="viewStudent(${student.id}); toggleActionMenu(event, ${student.id})" onmouseover="this.style.backgroundColor='#d1fae5'" onmouseout="this.style.backgroundColor=''" style="display: block; width: 100%; padding: 0.75rem 1rem; text-align: left; border: none; background: none; cursor: pointer; color: #10b981; font-weight: 500; transition: background-color 0.2s;">View</button>
                         <button onclick="openEditStudentModal(${student.id}); toggleActionMenu(event, ${student.id})" onmouseover="this.style.backgroundColor='#dbeafe'" onmouseout="this.style.backgroundColor=''" style="display: block; width: 100%; padding: 0.75rem 1rem; text-align: left; border: none; background: none; cursor: pointer; color: #2563eb; font-weight: 500; transition: background-color 0.2s;">Edit</button>
@@ -292,7 +292,7 @@ function viewStudent(studentId) {
             <div style="background: #f8f9fa; padding: 1.5rem; border-radius: 8px;">
                 <h3 style="margin-bottom: 1rem; color: #2563eb;">Personal Information</h3>
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-                    <div><strong>Student ID:</strong> ${student.studentId}</div>
+                    <div><strong>Student Number:</strong> ${student.studentNumber}</div>
                     <div><strong>Full Name:</strong> ${student.firstName} ${student.lastName}</div>
                     <div><strong>Email:</strong> ${student.email}</div>
                     <div><strong>Phone:</strong> ${student.phone || 'N/A'}</div>
