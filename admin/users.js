@@ -102,6 +102,8 @@ function openAddUserModal() {
 
 function openEditUserModal(userId) {
     const user = users.find(u => u.id === userId);
+
+    console.log('Editing user:', user);
     if (!user) return;
 
     currentEditingUserId = userId;
@@ -109,10 +111,19 @@ function openEditUserModal(userId) {
     document.getElementById('passwordLabel').textContent = '(leave empty to keep current)';
     document.getElementById('userPassword').required = false;
 
-    // Split username to get name parts if needed
-    const nameParts = user.username.split('.');
-    document.getElementById('userName').value = nameParts[0] || '';
-    document.getElementById('userSurname').value = nameParts[1] || '';
+    // Populate name/surname from stored fields if available, otherwise split username
+    let firstName = user.first_name || '';
+    let lastName = user.last_name || '';
+    console.log('First name:', firstName, 'Last name:', lastName);
+
+    if (!firstName && user.username) {
+        // split on common separators (space, dot, underscore, hyphen)
+        const parts = user.username.split(/[\s._-]+/);
+        firstName = parts[0] || '';
+        lastName = parts.slice(1).join(' ') || '';
+    }
+    document.getElementById('userName').value = firstName;
+    document.getElementById('userSurname').value = lastName;
     document.getElementById('userEmail').value = user.email;
     document.getElementById('userRole').value = user.role;
     document.getElementById('userPassword').value = '';
@@ -148,9 +159,6 @@ async function handleUserFormSubmit(e) {
     const role = document.getElementById('userRole').value;
     const password = document.getElementById('userPassword').value;
     
-    // Generate username from name and surname
-    const username = `${name.toLowerCase()} ${surname.toLowerCase()}`;
-    
     // Validate email format
     const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailPattern.test(email)) {
@@ -160,13 +168,13 @@ async function handleUserFormSubmit(e) {
     
     try {
         if (currentEditingUserId) {
-            // Edit existing user - email cannot be changed
+            // Edit existing user - send name/surname/role and optional password. Email is not changed here.
             const response = await fetch(`/api/admin/users/${currentEditingUserId}`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({ username, role, password })
+                body: JSON.stringify({ name, surname, role, password })
             });
 
             if (!response.ok) {
@@ -181,7 +189,8 @@ async function handleUserFormSubmit(e) {
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({ username, email, name, surname, role, password })
+                // For new users include generated username (or admin-provided), email and names
+                body: JSON.stringify({ username: `${name.toLowerCase()}.${surname.toLowerCase()}`, email, name, surname, role, password })
             });
 
             if (!response.ok) {

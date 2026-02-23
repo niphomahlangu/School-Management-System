@@ -349,15 +349,25 @@ app.post('/api/admin/users', noCache, hasRole('admin'), async (req, res) => {
 // Update an existing user (admin only)
 app.put('/api/admin/users/:id', noCache, hasRole('admin'), async (req, res) => {
   const userId = req.params.id;
-  const { username, role, password } = req.body;
+  const { username, role, password, name, surname } = req.body;
 
-  if (!username || !role) {
-    return res.status(400).json({ message: 'Username and role are required' });
+  // Require role and name/surname for updates. Username is optional.
+  if (!role || !name || !surname) {
+    return res.status(400).json({ message: 'Role, name and surname are required' });
   }
 
   try {
-    let updateQuery = 'UPDATE users SET username = ?, role = ?';
-    const values = [username, role];
+    // Build update query. Prefer updating username only if provided.
+    let updateQuery;
+    const values = [];
+
+    if (username && username.trim() !== '') {
+      updateQuery = 'UPDATE my_database.users SET username = ?, first_name = ?, last_name = ?, role = ?';
+      values.push(username, name, surname, role);
+    } else {
+      updateQuery = 'UPDATE my_database.users SET first_name = ?, last_name = ?, role = ?';
+      values.push(name, surname, role);
+    }
 
     if (password && password.length >= 6) {
       const passwordHash = await bcrypt.hash(password, 10);
@@ -679,6 +689,47 @@ app.delete('/api/admin/students/:id', noCache, hasRole('admin'), async (req, res
     console.error('Error deleting student:', error);
     res.status(500).json({ message: 'Error deleting student' });
   }
+});
+
+// Archive / restore a student and corresponding user (admin only)
+app.patch('/api/admin/students/:id/status', noCache, hasRole('admin'), (req, res) => {
+  const userId = req.params.id;
+
+  // Fetch current student status and the linked user id
+  const selectQuery = 'SELECT status, user_id FROM my_database.students WHERE user_id = ?';
+
+  connection.query(selectQuery, [userId], (err, results) => {
+    if (err) {
+      console.error('Error fetching student status:', err);
+      return res.status(500).json({ message: 'Error updating student status' });
+    }
+    if (results.length === 0) {
+      return res.status(404).json({ message: 'Student not found' });
+    }
+
+    const currentStatus = results[0].status || 'Active';
+    const newStatus = currentStatus === 'Archived' ? 'Active' : 'Archived';
+    const newIsActive = newStatus === 'Active';
+    const linkedUserId = results[0].user_id;
+
+    // Update both student status and users.is_active
+    const updateStudentQuery = 'UPDATE my_database.students SET status = ? WHERE user_id = ?';
+    connection.query(updateStudentQuery, [newStatus, userId], (updateErr) => {
+      if (updateErr) {
+        console.error('Error updating student status:', updateErr);
+        return res.status(500).json({ message: 'Error updating student status' });
+      }
+
+      const updateUserQuery = 'UPDATE my_database.users SET is_active = ? WHERE id = ?';
+      connection.query(updateUserQuery, [newIsActive, linkedUserId], (userErr) => {
+        if (userErr) {
+          console.error('Error updating linked user status:', userErr);
+          return res.status(500).json({ message: 'Error updating linked user status' });
+        }
+        res.json({ message: 'Student and user status updated', status: newStatus });
+      });
+    });
+  });
 });
 
 app.listen(port, () => {

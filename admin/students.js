@@ -128,7 +128,7 @@ function renderStudentsTable() {
                     <div id="menu-${student.id}" class="action-menu" style="display: none; position: absolute; right: 0; top: 100%; background: white; border: 1px solid #ddd; border-radius: 4px; box-shadow: 0 2px 8px rgba(0,0,0,0.15); min-width: 120px; z-index: 1000; margin-top: 0.25rem;">
                         <button onclick="viewStudent(${student.id}); toggleActionMenu(event, ${student.id})" onmouseover="this.style.backgroundColor='#d1fae5'" onmouseout="this.style.backgroundColor=''" style="display: block; width: 100%; padding: 0.75rem 1rem; text-align: left; border: none; background: none; cursor: pointer; color: #10b981; font-weight: 500; transition: background-color 0.2s;">View</button>
                         <button onclick="openEditStudentModal(${student.id}); toggleActionMenu(event, ${student.id})" onmouseover="this.style.backgroundColor='#dbeafe'" onmouseout="this.style.backgroundColor=''" style="display: block; width: 100%; padding: 0.75rem 1rem; text-align: left; border: none; background: none; cursor: pointer; color: #2563eb; font-weight: 500; transition: background-color 0.2s;">Edit</button>
-                        <button onclick="deleteStudent(${student.id}); toggleActionMenu(event, ${student.id})" onmouseover="this.style.backgroundColor='#fee2e2'" onmouseout="this.style.backgroundColor=''" style="display: block; width: 100%; padding: 0.75rem 1rem; text-align: left; border: none; background: none; cursor: pointer; color: #dc2626; font-weight: 500; transition: background-color 0.2s;">Delete</button>
+                            <button onclick="deactivateStudent(${student.id}); toggleActionMenu(event, ${student.id})" onmouseover="this.style.backgroundColor='#fee2e2'" onmouseout="this.style.backgroundColor=''" style="display: block; width: 100%; padding: 0.75rem 1rem; text-align: left; border: none; background: none; cursor: pointer; color: #dc2626; font-weight: 500; transition: background-color 0.2s;">${student.status === 'Active' ? 'Deactivate' : 'Restore'}</button>
                     </div>
                 </div>
             </td>
@@ -427,32 +427,30 @@ async function handleStudentFormSubmit(e) {
     }
 }
 
-async function deleteStudent(studentId) {
+async function deactivateStudent(studentId) {
     const student = students.find(s => s.id === studentId);
     if (!student) return;
 
-    if (!confirm(`Are you sure you want to delete ${student.firstName} ${student.lastName}? This action cannot be undone.`)) {
+    const action = student.status === 'Active' ? 'deactivate' : 'restore';
+    if (!confirm(`Are you sure you want to ${action} ${student.firstName} ${student.lastName}?`)) {
         return;
     }
 
     try {
-        const response = await fetch(`/api/admin/students/${studentId}`, {
-            method: 'DELETE'
+        const response = await fetch(`/api/admin/students/${studentId}/status`, {
+            method: 'PATCH'
         });
 
         if (!response.ok) {
             const err = await response.json().catch(() => ({}));
-            throw new Error(err.message || 'Error deleting student');
+            throw new Error(err.message || 'Error updating student status');
         }
 
-        alert('Student deleted successfully!');
+        const data = await response.json();
+        alert(`Student ${data.status === 'Archived' ? 'deactivated' : 'restored'} successfully!`);
         await loadStudents();
     } catch (error) {
-        console.error('Error deleting student:', error);
-        alert('Error deleting student. This is a demo - removing from local data only.');
-        
-        // For demo purposes, remove from local array
-        students = students.filter(s => s.id !== studentId);
-        renderStudentsTable();
+        console.error('Error updating student status:', error);
+        alert('Error updating student status. Please try again.');
     }
 }
