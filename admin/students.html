@@ -137,7 +137,7 @@
                     </div>
                     <div>
                         <label for="studentDOB" style="display: block; margin-bottom: 0.5rem; font-weight: 500;">Date of Birth *</label>
-                        <input type="date" id="studentDOB" required style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px; font-size: 1rem;">
+                        <input type="date" id="studentDOB" style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px; font-size: 1rem;">
                     </div>
                 </div>
 
@@ -173,7 +173,7 @@
                     </div>
                     <div>
                         <label for="studentEnrollmentDate" style="display: block; margin-bottom: 0.5rem; font-weight: 500;">Enrollment Date *</label>
-                        <input type="date" id="studentEnrollmentDate" required style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px; font-size: 1rem;">
+                        <input type="date" id="studentEnrollmentDate" style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px; font-size: 1rem;">
                     </div>
                 </div>
 
@@ -196,6 +196,18 @@
                 <div style="margin-bottom: 1.5rem;">
                     <label for="emergencyContactPhone" style="display: block; margin-bottom: 0.5rem; font-weight: 500;">Emergency Contact Phone</label>
                     <input type="tel" id="emergencyContactPhone" style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px; font-size: 1rem;">
+                </div>
+
+                <!-- Password / invite options -->
+                <div style="margin-bottom: 1rem; display: flex; align-items: center; gap: 1rem;">
+                    <label style="font-weight: 500;">
+                        <input type="checkbox" id="generatePassword" checked style="margin-right: 0.5rem;"> Generate temporary password (recommended)
+                    </label>
+                </div>
+
+                <div id="passwordContainer" style="margin-bottom: 1rem; display: none;">
+                    <label for="studentPassword" style="display: block; margin-bottom: 0.5rem; font-weight: 500;">Password</label>
+                    <input type="password" id="studentPassword" placeholder="Enter password (min 6 chars)" style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px; font-size: 1rem;">
                 </div>
 
                 <div style="display: flex; gap: 1rem; justify-content: flex-end;">

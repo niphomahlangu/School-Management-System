@@ -7,6 +7,16 @@ let currentEditingStudentId = null;
 let currentPage = 1;
 const pageSize = 10; // students per page
 
+// Generate a temporary password (8 characters: letters + digits)
+function generateTempPassword() {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    let pw = '';
+    for (let i = 0; i < 8; i++) {
+        pw += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return pw;
+}
+
 // Initialize student management on the dedicated students page
 document.addEventListener('DOMContentLoaded', () => {
     setupStudentManagement();
@@ -23,6 +33,15 @@ function setupStudentManagement() {
 
     addStudentBtn.addEventListener('click', openAddStudentModal);
     studentForm.addEventListener('submit', handleStudentFormSubmit);
+    // Show/hide password entry based on generate checkbox
+    const genPw = document.getElementById('generatePassword');
+    const pwContainer = document.getElementById('passwordContainer');
+    if (genPw) {
+        genPw.addEventListener('change', () => {
+            if (genPw.checked) pwContainer.style.display = 'none';
+            else pwContainer.style.display = 'block';
+        });
+    }
     searchStudents.addEventListener('input', () => {
         currentPage = 1;
         renderStudentsTable();
@@ -242,6 +261,13 @@ function openAddStudentModal() {
     // Set default enrollment date to today
     const today = new Date().toISOString().split('T')[0];
     document.getElementById('studentEnrollmentDate').value = today;
+    // Make date fields required for adding a new student
+    document.getElementById('studentDOB').required = true;
+    document.getElementById('studentEnrollmentDate').required = true;
+    // Reset password controls for add
+    const genPw = document.getElementById('generatePassword');
+    const pwContainer = document.getElementById('passwordContainer');
+    if (genPw) { genPw.checked = true; pwContainer.style.display = 'none'; }
     
     showStudentModal();
 }
@@ -267,6 +293,14 @@ function openEditStudentModal(studentId) {
     document.getElementById('emergencyContactName').value = student.emergencyContactName || '';
     document.getElementById('emergencyContactPhone').value = student.emergencyContactPhone || '';
 
+    // When editing, dates shouldn't be mandatory; allow updating other fields only
+    document.getElementById('studentDOB').required = false;
+    document.getElementById('studentEnrollmentDate').required = false;
+
+    // Hide password controls when editing existing student (no password change by default)
+    const genPw = document.getElementById('generatePassword');
+    const pwContainer = document.getElementById('passwordContainer');
+    if (genPw) { genPw.checked = true; pwContainer.style.display = 'none'; }
     showStudentModal();
 }
 
@@ -366,6 +400,25 @@ async function handleStudentFormSubmit(e) {
         emergencyContactPhone: document.getElementById('emergencyContactPhone').value.trim()
     };
 
+    // Only include password when creating a new student (server requires it)
+    if (!currentEditingStudentId) {
+        const genPw = document.getElementById('generatePassword');
+        const pwInput = document.getElementById('studentPassword');
+        let password = '';
+
+        if (genPw && genPw.checked) {
+            password = generateTempPassword();
+        } else if (pwInput) {
+            password = pwInput.value.trim();
+        }
+
+        if (!password || password.length < 6) {
+            alert('Password must be at least 6 characters. Either enter one or allow generation.');
+            return;
+        }
+
+        studentData.password = password;
+    }
     try {
         if (currentEditingStudentId) {
             // Edit existing student
@@ -397,7 +450,12 @@ async function handleStudentFormSubmit(e) {
                 throw new Error(err.message || 'Error creating student');
             }
 
-            alert('Student added successfully!');
+            // If server created successfully, show generated password if we generated one
+            if (studentData.password) {
+                alert('Student added successfully! Temporary password: ' + studentData.password + '\nPlease communicate this securely to the student.');
+            } else {
+                alert('Student added successfully!');
+            }
         }
 
         closeStudentModal();
