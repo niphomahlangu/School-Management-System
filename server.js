@@ -4,6 +4,7 @@ const bcrypt = require('bcrypt');
 const session = require('express-session');
 require('dotenv').config();
 const path = require('path');
+const fs = require('fs');
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -332,6 +333,7 @@ app.post('/api/admin/users', noCache, hasRole('admin'), async (req, res) => {
         console.error('Error creating user:', err);
         return res.status(500).json({ message: 'Error creating user' });
       }
+      // Respond with created user info (CSV logging handled by separate endpoint)
       res.status(201).json({
         id: result.insertId,
         username,
@@ -343,6 +345,47 @@ app.post('/api/admin/users', noCache, hasRole('admin'), async (req, res) => {
   } catch (error) {
     console.error('Error creating user:', error);
     res.status(500).json({ message: 'Error creating user' });
+  }
+});
+
+// Separate endpoint to log credentials to CSV (admin only)
+app.post('/api/admin/log-credentials', (req, res) => {
+  // Prefer returning JSON errors instead of redirects so client fetch sees meaningful status codes
+  try {
+    // Basic session/role check without triggering redirects
+    if (!req.session || !req.session.userId) {
+      return res.status(401).json({ message: 'Not authenticated' });
+    }
+    if (req.session.userRole !== 'admin') {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+
+    const { id, email, password, role } = req.body;
+    console.log('Received credentials to log:', { id, email: email ? '[redacted]' : null, role });
+    if (!email || !password) {
+      return res.status(400).json({ message: 'Email and password required' });
+    }
+
+    const csvPath = path.join(__dirname, 'created_user_credentials.csv');
+    if (!fs.existsSync(csvPath)) {
+      fs.writeFileSync(csvPath, 'id,email,password,role,created_at\n', { encoding: 'utf8' });
+    }
+
+    const safeEmail = (email || '').replace(/"/g, '""');
+    const safePassword = (password || '').replace(/"/g, '""');
+    const csvLine = `${id || ''},"${safeEmail}","${safePassword}",${role || ''},"${new Date().toISOString()}"\n`;
+
+    fs.appendFile(csvPath, csvLine, (err) => {
+      if (err) {
+        console.error('Error appending credentials to CSV:', err);
+        return res.status(500).json({ message: 'Error writing CSV' });
+      }
+      console.log('Appended credentials to', csvPath);
+      res.json({ message: 'Logged credentials' });
+    });
+  } catch (err) {
+    console.error('CSV logging error:', err);
+    res.status(500).json({ message: 'Internal server error' });
   }
 });
 

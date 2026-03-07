@@ -41,6 +41,26 @@ function setupUserManagement() {
     // Auto-generate email as user types name
     userName.addEventListener('input', updateGeneratedEmail);
     userSurname.addEventListener('input', updateGeneratedEmail);
+
+    // Generate password button (and utility)
+    const genBtn = document.getElementById('generatePasswordBtn');
+    if (genBtn) {
+        genBtn.addEventListener('click', () => {
+            const pw = generateTempPassword();
+            const pwField = document.getElementById('userPassword');
+            if (pwField) pwField.value = pw;
+        });
+    }
+}
+
+// Generate a temporary password (8 characters: letters + digits)
+function generateTempPassword() {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    let pw = '';
+    for (let i = 0; i < 8; i++) {
+        pw += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return pw;
 }
 
 function updateGeneratedEmail() {
@@ -96,6 +116,12 @@ function openAddUserModal() {
     emailField.style.backgroundColor = 'white';
     emailField.style.borderColor = '#ddd';
     emailField.style.color = 'inherit';
+
+    // Auto-generate a temporary password for new users
+    const pwField = document.getElementById('userPassword');
+    if (pwField) {
+        pwField.value = generateTempPassword();
+    }
     
     showUserModal();
 }
@@ -199,7 +225,18 @@ async function handleUserFormSubmit(e) {
             }
             
             const result = await response.json();
-            alert(`User created successfully!\nEmail: ${result.email}`);
+            alert(`User created successfully!\nEmail: ${result.email}\nPassword: ${password}`);            
+
+            // Attempt to log credentials to CSV via server endpoint
+            try {
+                await fetch('/api/admin/log-credentials', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id: result.id, email: result.email, password, role })
+                });
+            } catch (logErr) {
+                console.error('Failed to log credentials to server CSV endpoint:', logErr);
+            }
         }
 
         closeUserModal();
