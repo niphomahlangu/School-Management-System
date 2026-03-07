@@ -64,6 +64,24 @@ function setupStudentManagement() {
         closeStudentModal();
         closeViewStudentModal();
     });
+
+    // Auto-generate email preview and username for new students (like users flow)
+    const firstNameInput = document.getElementById('studentFirstName');
+    const lastNameInput = document.getElementById('studentLastName');
+    if (firstNameInput) firstNameInput.addEventListener('input', updateStudentGeneratedEmail);
+    if (lastNameInput) lastNameInput.addEventListener('input', updateStudentGeneratedEmail);
+}
+
+function updateStudentGeneratedEmail() {
+    if (currentEditingStudentId !== null) return; // don't override when editing
+    const first = document.getElementById('studentFirstName').value.trim().toLowerCase();
+    const emailField = document.getElementById('studentEmail');
+    if (first) {
+        const domain = (window.EMAIL_DOMAIN || 'myinstitute.co.za');
+        emailField.value = `${first}@${domain}`;
+    } else {
+        emailField.value = '';
+    }
 }
 
 // Load students from the server
@@ -442,7 +460,8 @@ async function handleStudentFormSubmit(e) {
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify(studentData)
+                    // include generated username for server to use when available
+                    body: JSON.stringify({ ...studentData, username: `${studentData.firstName.toLowerCase()}.${(studentData.lastName||'').toLowerCase()}` })
             });
 
             if (!response.ok) {

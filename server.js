@@ -544,7 +544,8 @@ app.post('/api/admin/students', noCache, hasRole('admin'), async (req, res) => {
       status, 
       emergencyContactName, 
       emergencyContactPhone,
-      password 
+      password,
+      username: providedUsername
     } = req.body;
 
     // Validate required fields
@@ -572,8 +573,8 @@ app.post('/api/admin/students', noCache, hasRole('admin'), async (req, res) => {
     // Hash password
     const passwordHash = await bcrypt.hash(password, 10);
 
-    // Generate username from email
-    const username = email.split('@')[0];
+    // Prefer provided username (from client) otherwise derive from email
+    const username = providedUsername && providedUsername.trim() !== '' ? providedUsername : email.split('@')[0];
 
     // Insert user first
     const insertUserQuery = 'INSERT INTO my_database.users (username, email, password_hash, first_name, last_name, role, is_active) VALUES (?, ?, ?, ?, ?, ?, ?)';
