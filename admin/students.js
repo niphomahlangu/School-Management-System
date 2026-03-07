@@ -455,13 +455,19 @@ async function handleStudentFormSubmit(e) {
             alert('Student updated successfully!');
         } else {
             // Add new student
+            // compute username in same format as users flow: first.last (lowercased, spaces -> dots)
+            const first = (studentData.firstName || '').trim().toLowerCase();
+            const last = (studentData.lastName || '').trim().toLowerCase();
+            const sanitizedFirst = first.replace(/\s+/g, '.');
+            const sanitizedLast = last.replace(/\s+/g, '.');
+            const generatedUsername = sanitizedFirst && sanitizedLast ? `${sanitizedFirst}.${sanitizedLast}` : (sanitizedFirst || sanitizedLast);
+
             const response = await fetch('/api/admin/students', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                    // include generated username for server to use when available
-                    body: JSON.stringify({ ...studentData, username: `${studentData.firstName.toLowerCase()}.${(studentData.lastName||'').toLowerCase()}` })
+                body: JSON.stringify({ ...studentData, username: generatedUsername })
             });
 
             if (!response.ok) {
@@ -469,11 +475,25 @@ async function handleStudentFormSubmit(e) {
                 throw new Error(err.message || 'Error creating student');
             }
 
+            // Parse server result
+            const result = await response.json().catch(() => ({}));
+
             // If server created successfully, show generated password if we generated one
             if (studentData.password) {
                 alert('Student added successfully! Temporary password: ' + studentData.password + '\nPlease communicate this securely to the student.');
             } else {
                 alert('Student added successfully!');
+            }
+
+            // Attempt to log credentials to CSV via server endpoint
+            try {
+                await fetch('/api/admin/log-credentials', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id: result.id, email: result.email, password: studentData.password, role: 'student' })
+                });
+            } catch (logErr) {
+                console.error('Failed to log student credentials to server CSV endpoint:', logErr);
             }
         }
 
