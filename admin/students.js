@@ -472,6 +472,50 @@ async function handleStudentFormSubmit(e) {
 
             if (!response.ok) {
                 const err = await response.json().catch(() => ({}));
+
+                // If email already exists on users table, offer to link records
+                if (response.status === 400 && err.message && err.message.toLowerCase().includes('email')) {
+                    const confirmLink = confirm(`Email address ${studentData.email} already has a user. Would you like to link those records?`);
+                    if (confirmLink) {
+                        try {
+                            console.log('Attempting to link existing user to new student record with data:', studentData);
+                            const linkResp = await fetch('/api/admin/students/link', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                    firstName: studentData.firstName,
+                                    lastName: studentData.lastName,
+                                    email: studentData.email,
+                                    phone: studentData.phone,
+                                    dateOfBirth: studentData.dateOfBirth,
+                                    address: studentData.address,
+                                    department: studentData.department,
+                                    year: studentData.year,
+                                    enrollmentDate: studentData.enrollmentDate,
+                                    gpa: studentData.gpa,
+                                    status: studentData.status,
+                                    emergencyContactName: studentData.emergencyContactName,
+                                    emergencyContactPhone: studentData.emergencyContactPhone
+                                })
+                            });
+
+                            if (!linkResp.ok) {
+                                const linkErr = await linkResp.json().catch(() => ({}));
+                                throw new Error(linkErr.message || 'Error linking existing user to student');
+                            }
+
+                            alert('Existing user linked to new student record successfully.');
+                            closeStudentModal();
+                            await loadStudents();
+                            return;
+                        } catch (linkError) {
+                            console.error('Error linking existing user:', linkError);
+                            alert(linkError.message || 'Failed to link existing user.');
+                            return;
+                        }
+                    }
+                }
+
                 throw new Error(err.message || 'Error creating student');
             }
 

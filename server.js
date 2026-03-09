@@ -641,6 +641,106 @@ app.post('/api/admin/students', noCache, hasRole('admin'), async (req, res) => {
   }
 });
 
+// Link an existing user (by email) to a new student record (admin only)
+app.post('/api/admin/students/link', noCache, hasRole('admin'), async (req, res) => {
+  try {
+    console.log('Received request to link student to existing user:', req.body);
+    const {
+      firstName,
+      lastName,
+      email,
+      phone,
+      dateOfBirth,
+      address,
+      department,
+      year,
+      enrollmentDate,
+      gpa,
+      status,
+      emergencyContactName,
+      emergencyContactPhone
+    } = req.body;
+
+    if (!email || !firstName || !lastName || !dateOfBirth) {
+      return res.status(400).json({ message: 'Email, first name, last name and date of birth are required to link' });
+    }
+
+    // Find existing user by email
+    const findUserQuery = 'SELECT id FROM users WHERE email = ?';
+    const userResult = await new Promise((resolve, reject) => {
+      connection.query(findUserQuery, [email], (err, results) => {
+        if (err) reject(err);
+        else resolve(results);
+      });
+    });
+
+    if (userResult.length === 0) {
+      return res.status(404).json({ message: 'User with that email not found' });
+    }
+
+    const userId = userResult[0].id;
+
+    // Check if a student record already exists for this user
+    const checkStudentQuery = 'SELECT studentId FROM students WHERE user_id = ?';
+    const studentExists = await new Promise((resolve, reject) => {
+      connection.query(checkStudentQuery, [userId], (err, results) => {
+        if (err) reject(err);
+        else resolve(results);
+      });
+    });
+
+    if (studentExists.length > 0) {
+      return res.status(400).json({ message: 'A student record is already linked to that user' });
+    }
+
+    // Generate student number
+    const studentNumber = `STU${2024000 + userId}`;
+
+    // Insert student record linking to existing user
+    const insertStudentQuery = `
+      INSERT INTO my_database.students (
+        user_id,
+        studentNumber,
+        dateOfBirth,
+        phone,
+        address,
+        department,
+        year,
+        enrollmentDate,
+        gpa,
+        status,
+        emergencyContactName,
+        emergencyContactPhone
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `;
+
+    await new Promise((resolve, reject) => {
+      connection.query(insertStudentQuery, [
+        userId,
+        studentNumber,
+        dateOfBirth,
+        phone || null,
+        address || null,
+        department || null,
+        year || 1,
+        enrollmentDate || null,
+        gpa || null,
+        status || 'Active',
+        emergencyContactName || null,
+        emergencyContactPhone || null
+      ], (err, result) => {
+        if (err) reject(err);
+        else resolve(result);
+      });
+    });
+
+    res.status(201).json({ message: 'Linked student to existing user', id: userId, studentNumber });
+  } catch (error) {
+    console.error('Error linking student to user:', error);
+    res.status(500).json({ message: 'Error linking student to user' });
+  }
+});
+
 // Update an existing student (admin only)
 app.put('/api/admin/students/:id', noCache, hasRole('admin'), async (req, res) => {
   try {
