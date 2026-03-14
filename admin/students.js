@@ -20,8 +20,47 @@ function generateTempPassword() {
 // Initialize student management on the dedicated students page
 document.addEventListener('DOMContentLoaded', () => {
     setupStudentManagement();
+    loadCourses();
     loadStudents();
 });
+
+// Load courses from server and populate department filters / selects
+async function loadCourses() {
+    try {
+        const resp = await fetch('/api/courses');
+        if (!resp.ok) {
+            // If unauthorized or server error, keep static options defined in HTML
+            console.warn('Could not load courses, using static list');
+            return;
+        }
+        const courses = await resp.json();
+        const filterDepartment = document.getElementById('filterDepartment');
+        const studentDepartment = document.getElementById('studentDepartment');
+
+        if (!filterDepartment || !studentDepartment) return;
+
+        // Reset options
+        filterDepartment.innerHTML = '<option value="">All Departments</option>';
+        studentDepartment.innerHTML = '<option value="">Select Department</option>';
+
+        courses.forEach(c => {
+            const shortName = (c.shortName || c.courseName || '').trim();
+            const label = shortName ? `${shortName} (${c.courseCode})` : `${c.courseName} (${c.courseCode})`;
+
+            const opt1 = document.createElement('option');
+            opt1.value = shortName || c.courseName || c.courseCode;
+            opt1.textContent = label;
+            filterDepartment.appendChild(opt1);
+
+            const opt2 = document.createElement('option');
+            opt2.value = opt1.value;
+            opt2.textContent = label;
+            studentDepartment.appendChild(opt2);
+        });
+    } catch (err) {
+        console.error('Error loading courses:', err);
+    }
+}
 
 function setupStudentManagement() {
     const addStudentBtn = document.getElementById('addStudentBtn');

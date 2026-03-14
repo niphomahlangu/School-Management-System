@@ -879,3 +879,21 @@ app.patch('/api/admin/students/:id/status', noCache, hasRole('admin'), (req, res
 app.listen(port, () => {
   console.log(`Server running on http://localhost:${port}`);
 });
+
+// API: Get courses (majors) - returns code, full name and shortName for UI
+app.get('/api/courses', noCache, hasRole('admin'), (req, res) => {
+  const query = `
+    SELECT courseCode, courseName,
+      TRIM(SUBSTRING_INDEX(courseName, ':', -1)) AS shortName
+    FROM my_database.courses
+    ORDER BY shortName
+  `;
+
+  connection.query(query, (err, results) => {
+    if (err) {
+      console.error('Error fetching courses:', err);
+      return res.status(500).json({ message: 'Error fetching courses' });
+    }
+    res.json(results);
+  });
+});
