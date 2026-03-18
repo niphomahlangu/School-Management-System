@@ -47,13 +47,16 @@ async function loadCourses() {
             const shortName = (c.shortName || c.courseName || '').trim();
             const label = shortName ? `${shortName} (${c.courseCode})` : `${c.courseName} (${c.courseCode})`;
 
+            // Use full courseName as the value so it matches the server-derived department
+            const value = c.courseName || shortName || c.courseCode;
+
             const opt1 = document.createElement('option');
-            opt1.value = shortName || c.courseName || c.courseCode;
+            opt1.value = value;
             opt1.textContent = label;
             filterDepartment.appendChild(opt1);
 
             const opt2 = document.createElement('option');
-            opt2.value = opt1.value;
+            opt2.value = value;
             opt2.textContent = label;
             studentDepartment.appendChild(opt2);
         });

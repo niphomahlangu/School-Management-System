@@ -473,6 +473,7 @@ app.patch('/api/admin/users/:id/status', noCache, hasRole('admin'), (req, res) =
 
 // Get all students (admin only)
 app.get('/api/admin/students', noCache, hasRole('admin'), (req, res) => {
+  // Derive department from enrolled courses (student_courses -> courses). Returns comma-separated course names.
   const query = `
     SELECT 
       s.studentId,
@@ -481,7 +482,7 @@ app.get('/api/admin/students', noCache, hasRole('admin'), (req, res) => {
       s.dateOfBirth,
       s.phone,
       s.address,
-      s.department,
+      GROUP_CONCAT(DISTINCT c.courseName SEPARATOR ', ') AS department,
       s.year,
       s.enrollmentDate,
       s.gpa,
@@ -493,7 +494,10 @@ app.get('/api/admin/students', noCache, hasRole('admin'), (req, res) => {
       u.last_name,
       u.email
     FROM my_database.students s
+    LEFT JOIN my_database.student_courses sc ON sc.studentId = s.studentId
+    LEFT JOIN my_database.courses c ON sc.courseId = c.courseId
     JOIN my_database.users u ON s.user_id = u.id
+    GROUP BY s.studentId
     ORDER BY s.studentId DESC
   `;
 
@@ -589,22 +593,21 @@ app.post('/api/admin/students', noCache, hasRole('admin'), async (req, res) => {
     // Generate student number
     const studentNumber = `STU${2024000 + userId}`;
 
-    // Insert student record
+    // Insert student record (department removed; will be derived from student_courses)
     const insertStudentQuery = `
       INSERT INTO my_database.students (
-        user_id, 
-        studentNumber, 
-        dateOfBirth, 
-        phone, 
-        address, 
-        department, 
-        year, 
-        enrollmentDate, 
-        gpa, 
-        status, 
-        emergencyContactName, 
+        user_id,
+        studentNumber,
+        dateOfBirth,
+        phone,
+        address,
+        year,
+        enrollmentDate,
+        gpa,
+        status,
+        emergencyContactName,
         emergencyContactPhone
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     await new Promise((resolve, reject) => {
@@ -614,7 +617,6 @@ app.post('/api/admin/students', noCache, hasRole('admin'), async (req, res) => {
         dateOfBirth,
         phone || null,
         address || null,
-        department || null,
         year || 1,
         enrollmentDate || null,
         gpa || null,
@@ -696,7 +698,7 @@ app.post('/api/admin/students/link', noCache, hasRole('admin'), async (req, res)
     // Generate student number
     const studentNumber = `STU${2024000 + userId}`;
 
-    // Insert student record linking to existing user
+    // Insert student record linking to existing user (department removed)
     const insertStudentQuery = `
       INSERT INTO my_database.students (
         user_id,
@@ -704,14 +706,13 @@ app.post('/api/admin/students/link', noCache, hasRole('admin'), async (req, res)
         dateOfBirth,
         phone,
         address,
-        department,
         year,
         enrollmentDate,
         gpa,
         status,
         emergencyContactName,
         emergencyContactPhone
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     await new Promise((resolve, reject) => {
@@ -721,7 +722,6 @@ app.post('/api/admin/students/link', noCache, hasRole('admin'), async (req, res)
         dateOfBirth,
         phone || null,
         address || null,
-        department || null,
         year || 1,
         enrollmentDate || null,
         gpa || null,
@@ -771,10 +771,10 @@ app.put('/api/admin/students/:id', noCache, hasRole('admin'), async (req, res) =
       });
     });
 
-    // Update student information
+    // Update student information (department removed; derive from student_courses)
     const updateStudentQuery = `
       UPDATE my_database.students 
-      SET dateOfBirth = ?, phone = ?, address = ?, department = ?, year = ?, 
+      SET dateOfBirth = ?, phone = ?, address = ?, year = ?, 
           enrollmentDate = ?, gpa = ?, status = ?, emergencyContactName = ?, emergencyContactPhone = ?
       WHERE user_id = ?
     `;
@@ -784,7 +784,6 @@ app.put('/api/admin/students/:id', noCache, hasRole('admin'), async (req, res) =
         dateOfBirth,
         phone || null,
         address || null,
-        department || null,
         year || 1,
         enrollmentDate || null,
         gpa || null,
