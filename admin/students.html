@@ -57,8 +57,8 @@
             <!-- Filter and Search -->
             <div style="display: flex; gap: 1rem; margin-bottom: 1.5rem; flex-wrap: wrap;">
                 <input type="text" id="searchStudents" placeholder="Search by name, student ID, or email..." class="search-input" style="flex: 1; min-width: 200px;">
-                <select id="filterDepartment" class="filter-select" style="min-width: 150px;">
-                    <option value="">All Departments</option>
+                <select id="filterCourse" class="filter-select" style="min-width: 150px;">
+                    <option value="">All Courses</option>
                     <option value="Computer Science">Computer Science</option>
                     <option value="Engineering">Engineering</option>
                     <option value="Business">Business</option>
@@ -89,7 +89,7 @@
                             <th style="padding: 12px; text-align: left; font-weight: 600; border-bottom: 2px solid #e0e0e0;">Student Number</th>
                             <th style="padding: 12px; text-align: left; font-weight: 600; border-bottom: 2px solid #e0e0e0;">Name</th>
                             <th style="padding: 12px; text-align: left; font-weight: 600; border-bottom: 2px solid #e0e0e0;">Email</th>
-                            <th style="padding: 12px; text-align: left; font-weight: 600; border-bottom: 2px solid #e0e0e0;">Department</th>
+                            <th style="padding: 12px; text-align: left; font-weight: 600; border-bottom: 2px solid #e0e0e0;">Course</th>
                             <th style="padding: 12px; text-align: left; font-weight: 600; border-bottom: 2px solid #e0e0e0;">Year</th>
                             <th style="padding: 12px; text-align: left; font-weight: 600; border-bottom: 2px solid #e0e0e0;">GPA</th>
                             <th style="padding: 12px; text-align: left; font-weight: 600; border-bottom: 2px solid #e0e0e0;">Status</th>
@@ -149,9 +149,9 @@
                 <h3 style="margin: 1.5rem 0 1rem; color: #2563eb; border-bottom: 2px solid #e0e0e0; padding-bottom: 0.5rem;">Academic Information</h3>
 
                 <div style="margin-bottom: 1rem;">
-                    <label for="studentDepartment" style="display: block; margin-bottom: 0.5rem; font-weight: 500;">Department *</label>
-                    <select id="studentDepartment" required style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px; font-size: 1rem;">
-                        <option value="">Select Department</option>
+                    <label for="studentCourse" style="display: block; margin-bottom: 0.5rem; font-weight: 500;">Course *</label>
+                    <select id="studentCourse" required style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px; font-size: 1rem;">
+                        <option value="">Select Course</option>
                         <option value="Computer Science">Computer Science</option>
                         <option value="Engineering">Engineering</option>
                         <option value="Business">Business</option>

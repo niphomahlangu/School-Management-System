@@ -24,7 +24,7 @@ document.addEventListener('DOMContentLoaded', () => {
     loadStudents();
 });
 
-// Load courses from server and populate department filters / selects
+// Load courses from server and populate course filters / selects
 async function loadCourses() {
     try {
         const resp = await fetch('/api/courses');
@@ -34,31 +34,31 @@ async function loadCourses() {
             return;
         }
         const courses = await resp.json();
-        const filterDepartment = document.getElementById('filterDepartment');
-        const studentDepartment = document.getElementById('studentDepartment');
+        const filterCourse = document.getElementById('filterCourse');
+        const studentCourse = document.getElementById('studentCourse');
 
-        if (!filterDepartment || !studentDepartment) return;
+        if (!filterCourse || !studentCourse) return;
 
         // Reset options
-        filterDepartment.innerHTML = '<option value="">All Departments</option>';
-        studentDepartment.innerHTML = '<option value="">Select Department</option>';
+        filterCourse.innerHTML = '<option value="">All Courses</option>';
+        studentCourse.innerHTML = '<option value="">Select Course</option>';
 
         courses.forEach(c => {
             const shortName = (c.shortName || c.courseName || '').trim();
             const label = shortName ? `${shortName} (${c.courseCode})` : `${c.courseName} (${c.courseCode})`;
 
-            // Use full courseName as the value so it matches the server-derived department
+            // Use full courseName as the value so it matches the server-derived course
             const value = c.courseName || shortName || c.courseCode;
 
             const opt1 = document.createElement('option');
             opt1.value = value;
             opt1.textContent = label;
-            filterDepartment.appendChild(opt1);
+            filterCourse.appendChild(opt1);
 
             const opt2 = document.createElement('option');
             opt2.value = value;
             opt2.textContent = label;
-            studentDepartment.appendChild(opt2);
+            studentCourse.appendChild(opt2);
         });
     } catch (err) {
         console.error('Error loading courses:', err);
@@ -69,7 +69,7 @@ function setupStudentManagement() {
     const addStudentBtn = document.getElementById('addStudentBtn');
     const studentForm = document.getElementById('studentForm');
     const searchStudents = document.getElementById('searchStudents');
-    const filterDepartment = document.getElementById('filterDepartment');
+    const filterCourse = document.getElementById('filterCourse');
     const filterYear = document.getElementById('filterYear');
     const filterStatus = document.getElementById('filterStatus');
 
@@ -88,7 +88,7 @@ function setupStudentManagement() {
         currentPage = 1;
         renderStudentsTable();
     });
-    filterDepartment.addEventListener('change', () => {
+    filterCourse.addEventListener('change', () => {
         currentPage = 1;
         renderStudentsTable();
     });
@@ -151,7 +151,7 @@ async function loadStudents() {
 
 function renderStudentsTable() {
     const searchQuery = document.getElementById('searchStudents').value.toLowerCase();
-    const filterDept = document.getElementById('filterDepartment').value;
+    const filterCourse = document.getElementById('filterCourse').value;
     const filterYr = document.getElementById('filterYear').value;
     const filterStat = document.getElementById('filterStatus').value;
 
@@ -162,11 +162,11 @@ function renderStudentsTable() {
             `${student.firstName} ${student.lastName}`.toLowerCase().includes(searchQuery) ||
             student.email.toLowerCase().includes(searchQuery);
         
-        const matchesDept = !filterDept || student.department === filterDept;
+        const matchesCourse = !filterCourse || student.course === filterCourse;
         const matchesYear = !filterYr || student.year.toString() === filterYr;
         const matchesStatus = !filterStat || student.status === filterStat;
 
-        return matchesSearch && matchesDept && matchesYear && matchesStatus;
+        return matchesSearch && matchesCourse && matchesYear && matchesStatus;
     });
 
     // Pagination
@@ -192,7 +192,7 @@ function renderStudentsTable() {
             <td style="padding: 12px;">${student.studentNumber}</td>
             <td style="padding: 12px;">${student.firstName} ${student.lastName}</td>
             <td style="padding: 12px;">${student.email}</td>
-            <td style="padding: 12px;">${student.department}</td>
+            <td style="padding: 12px;">${student.course}</td>
             <td style="padding: 12px;">Year ${student.year}</td>
             <td style="padding: 12px;">${student.gpa || 'N/A'}</td>
             <td style="padding: 12px;">
@@ -346,7 +346,7 @@ function openEditStudentModal(studentId) {
     document.getElementById('studentPhone').value = student.phone || '';
     document.getElementById('studentDOB').value = (student.dateOfBirth || '').split('T')[0];
     document.getElementById('studentAddress').value = student.address || '';
-    document.getElementById('studentDepartment').value = student.department;
+    document.getElementById('studentCourse').value = student.course;
     document.getElementById('studentYear').value = student.year;
     document.getElementById('studentEnrollmentDate').value = (student.enrollmentDate || '').split('T')[0];
     document.getElementById('studentStatus').value = student.status;
@@ -398,7 +398,7 @@ function viewStudent(studentId) {
             <div style="background: #f8f9fa; padding: 1.5rem; border-radius: 8px;">
                 <h3 style="margin-bottom: 1rem; color: #2563eb;">Academic Information</h3>
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-                    <div><strong>Department:</strong> ${student.department}</div>
+                    <div><strong>Course:</strong> ${student.course}</div>
                     <div><strong>Year Level:</strong> Year ${student.year}</div>
                     <div><strong>Enrollment Date:</strong> ${new Date(student.enrollmentDate).toLocaleDateString()}</div>
                     <div><strong>GPA:</strong> ${student.gpa || 'N/A'}</div>
@@ -452,7 +452,7 @@ async function handleStudentFormSubmit(e) {
         phone: document.getElementById('studentPhone').value.trim(),
         dateOfBirth: document.getElementById('studentDOB').value,
         address: document.getElementById('studentAddress').value.trim(),
-        department: document.getElementById('studentDepartment').value,
+        course: document.getElementById('studentCourse').value,
         year: parseInt(document.getElementById('studentYear').value),
         enrollmentDate: document.getElementById('studentEnrollmentDate').value,
         status: document.getElementById('studentStatus').value,
@@ -531,7 +531,7 @@ async function handleStudentFormSubmit(e) {
                                     phone: studentData.phone,
                                     dateOfBirth: studentData.dateOfBirth,
                                     address: studentData.address,
-                                    department: studentData.department,
+                                    course: studentData.course,
                                     year: studentData.year,
                                     enrollmentDate: studentData.enrollmentDate,
                                     gpa: studentData.gpa,

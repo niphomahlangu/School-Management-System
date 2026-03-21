@@ -473,7 +473,7 @@ app.patch('/api/admin/users/:id/status', noCache, hasRole('admin'), (req, res) =
 
 // Get all students (admin only)
 app.get('/api/admin/students', noCache, hasRole('admin'), (req, res) => {
-  // Derive department from enrolled courses (student_courses -> courses). Returns comma-separated course names.
+  // Derive course from enrolled courses (student_courses -> courses). Returns comma-separated course names.
   const query = `
     SELECT 
       s.studentId,
@@ -482,7 +482,7 @@ app.get('/api/admin/students', noCache, hasRole('admin'), (req, res) => {
       s.dateOfBirth,
       s.phone,
       s.address,
-      GROUP_CONCAT(DISTINCT c.courseName SEPARATOR ', ') AS department,
+      GROUP_CONCAT(DISTINCT c.courseName SEPARATOR ', ') AS course,
       s.year,
       s.enrollmentDate,
       s.gpa,
@@ -517,7 +517,7 @@ app.get('/api/admin/students', noCache, hasRole('admin'), (req, res) => {
       phone: student.phone,
       address: student.address,
       dateOfBirth: student.dateOfBirth,
-      department: student.department,
+      course: student.course,
       year: student.year,
       enrollmentDate: student.enrollmentDate,
       gpa: student.gpa,
@@ -541,7 +541,7 @@ app.post('/api/admin/students', noCache, hasRole('admin'), async (req, res) => {
       phone, 
       dateOfBirth, 
       address, 
-      department, 
+      course, 
       year, 
       enrollmentDate, 
       gpa, 
@@ -631,12 +631,12 @@ app.post('/api/admin/students', noCache, hasRole('admin'), async (req, res) => {
 
     const studentId = studentInsertResult.insertId;
 
-    // Enroll the new student in the selected course (department = courseName)
-    if (department) {
+    // Enroll the new student in the selected course
+    if (course) {
       const courseRows = await new Promise((resolve, reject) => {
         connection.query(
           'SELECT courseId FROM my_database.courses WHERE courseName = ?',
-          [department],
+          [course],
           (err, results) => {
             if (err) reject(err);
             else resolve(results);
@@ -683,7 +683,7 @@ app.post('/api/admin/students/link', noCache, hasRole('admin'), async (req, res)
       phone,
       dateOfBirth,
       address,
-      department,
+      course,
       year,
       enrollmentDate,
       gpa,
@@ -781,7 +781,7 @@ app.put('/api/admin/students/:id', noCache, hasRole('admin'), async (req, res) =
       phone, 
       dateOfBirth, 
       address, 
-      department, 
+      course, 
       year, 
       enrollmentDate, 
       gpa, 
@@ -844,12 +844,12 @@ app.put('/api/admin/students/:id', noCache, hasRole('admin'), async (req, res) =
       });
     });
 
-    // Update student_courses if a department/course was selected
-    if (department) {
+    // Update student_courses if a course was selected
+    if (course) {
       const courseRows = await new Promise((resolve, reject) => {
         connection.query(
           'SELECT courseId FROM my_database.courses WHERE courseName = ?',
-          [department],
+          [course],
           (err, results) => {
             if (err) reject(err);
             else resolve(results);
