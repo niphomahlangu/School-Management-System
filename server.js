@@ -610,7 +610,7 @@ app.post('/api/admin/students', noCache, hasRole('admin'), async (req, res) => {
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
-    await new Promise((resolve, reject) => {
+    const studentInsertResult = await new Promise((resolve, reject) => {
       connection.query(insertStudentQuery, [
         userId,
         studentNumber,
@@ -629,9 +629,38 @@ app.post('/api/admin/students', noCache, hasRole('admin'), async (req, res) => {
       });
     });
 
+    const studentId = studentInsertResult.insertId;
+
+    // Enroll the new student in the selected course (department = courseName)
+    if (department) {
+      const courseRows = await new Promise((resolve, reject) => {
+        connection.query(
+          'SELECT courseId FROM my_database.courses WHERE courseName = ?',
+          [department],
+          (err, results) => {
+            if (err) reject(err);
+            else resolve(results);
+          }
+        );
+      });
+
+      if (courseRows.length > 0) {
+        await new Promise((resolve, reject) => {
+          connection.query(
+            'INSERT IGNORE INTO my_database.student_courses (studentId, courseId) VALUES (?, ?)',
+            [studentId, courseRows[0].courseId],
+            (err, result) => {
+              if (err) reject(err);
+              else resolve(result);
+            }
+          );
+        });
+      }
+    }
+
     res.status(201).json({
       id: userId,
-      studentId: studentNumber,
+      studentId: studentId,
       firstName,
       lastName,
       email,
