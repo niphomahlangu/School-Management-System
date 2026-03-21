@@ -773,7 +773,7 @@ app.post('/api/admin/students/link', noCache, hasRole('admin'), async (req, res)
 // Update an existing student (admin only)
 app.put('/api/admin/students/:id', noCache, hasRole('admin'), async (req, res) => {
   try {
-    const userId = req.params.id;
+    const studentId = parseInt(req.params.id, 10);
     const { 
       firstName, 
       lastName, 
@@ -790,6 +790,24 @@ app.put('/api/admin/students/:id', noCache, hasRole('admin'), async (req, res) =
       emergencyContactPhone 
     } = req.body;
 
+    // Resolve the user_id from the students table using studentId
+    const studentRows = await new Promise((resolve, reject) => {
+      connection.query(
+        'SELECT studentId, user_id FROM my_database.students WHERE studentId = ?',
+        [studentId],
+        (err, results) => {
+          if (err) reject(err);
+          else resolve(results);
+        }
+      );
+    });
+
+    if (studentRows.length === 0) {
+      return res.status(404).json({ message: 'Student not found' });
+    }
+
+    const userId = studentRows[0].user_id;
+
     // Update user information
     const updateUserQuery = 'UPDATE my_database.users SET first_name = ?, last_name = ?, email = ? WHERE id = ?';
     
@@ -805,12 +823,12 @@ app.put('/api/admin/students/:id', noCache, hasRole('admin'), async (req, res) =
       UPDATE my_database.students 
       SET dateOfBirth = ?, phone = ?, address = ?, year = ?, 
           enrollmentDate = ?, gpa = ?, status = ?, emergencyContactName = ?, emergencyContactPhone = ?
-      WHERE user_id = ?
+      WHERE studentId = ?
     `;
 
     await new Promise((resolve, reject) => {
       connection.query(updateStudentQuery, [
-        dateOfBirth,
+        dateOfBirth || null,
         phone || null,
         address || null,
         year || 1,
@@ -819,12 +837,51 @@ app.put('/api/admin/students/:id', noCache, hasRole('admin'), async (req, res) =
         status || 'Active',
         emergencyContactName || null,
         emergencyContactPhone || null,
-        userId
+        studentId
       ], (err, result) => {
         if (err) reject(err);
         else resolve(result);
       });
     });
+
+    // Update student_courses if a department/course was selected
+    if (department) {
+      const courseRows = await new Promise((resolve, reject) => {
+        connection.query(
+          'SELECT courseId FROM my_database.courses WHERE courseName = ?',
+          [department],
+          (err, results) => {
+            if (err) reject(err);
+            else resolve(results);
+          }
+        );
+      });
+
+      if (courseRows.length > 0) {
+        // Replace existing course assignments with the newly selected one
+        await new Promise((resolve, reject) => {
+          connection.query(
+            'DELETE FROM my_database.student_courses WHERE studentId = ?',
+            [studentId],
+            (err) => {
+              if (err) reject(err);
+              else resolve();
+            }
+          );
+        });
+
+        await new Promise((resolve, reject) => {
+          connection.query(
+            'INSERT INTO my_database.student_courses (studentId, courseId) VALUES (?, ?)',
+            [studentId, courseRows[0].courseId],
+            (err, result) => {
+              if (err) reject(err);
+              else resolve(result);
+            }
+          );
+        });
+      }
+    }
 
     res.json({ message: 'Student updated successfully' });
   } catch (error) {

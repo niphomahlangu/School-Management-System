@@ -344,11 +344,11 @@ function openEditStudentModal(studentId) {
     document.getElementById('studentLastName').value = student.lastName;
     document.getElementById('studentEmail').value = student.email;
     document.getElementById('studentPhone').value = student.phone || '';
-    document.getElementById('studentDOB').value = student.dateOfBirth;
+    document.getElementById('studentDOB').value = (student.dateOfBirth || '').split('T')[0];
     document.getElementById('studentAddress').value = student.address || '';
     document.getElementById('studentDepartment').value = student.department;
     document.getElementById('studentYear').value = student.year;
-    document.getElementById('studentEnrollmentDate').value = student.enrollmentDate;
+    document.getElementById('studentEnrollmentDate').value = (student.enrollmentDate || '').split('T')[0];
     document.getElementById('studentStatus').value = student.status;
     document.getElementById('emergencyContactName').value = student.emergencyContactName || '';
     document.getElementById('emergencyContactPhone').value = student.emergencyContactPhone || '';
