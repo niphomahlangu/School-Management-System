@@ -922,12 +922,12 @@ app.delete('/api/admin/students/:id', noCache, hasRole('admin'), async (req, res
 
 // Archive / restore a student and corresponding user (admin only)
 app.patch('/api/admin/students/:id/status', noCache, hasRole('admin'), (req, res) => {
-  const userId = req.params.id;
+  const studentId = req.params.id;
 
   // Fetch current student status and the linked user id
-  const selectQuery = 'SELECT status, user_id FROM my_database.students WHERE user_id = ?';
+  const selectQuery = 'SELECT status, user_id FROM my_database.students WHERE studentId = ?';
 
-  connection.query(selectQuery, [userId], (err, results) => {
+  connection.query(selectQuery, [studentId], (err, results) => {
     if (err) {
       console.error('Error fetching student status:', err);
       return res.status(500).json({ message: 'Error updating student status' });
@@ -942,8 +942,8 @@ app.patch('/api/admin/students/:id/status', noCache, hasRole('admin'), (req, res
     const linkedUserId = results[0].user_id;
 
     // Update both student status and users.is_active
-    const updateStudentQuery = 'UPDATE my_database.students SET status = ? WHERE user_id = ?';
-    connection.query(updateStudentQuery, [newStatus, userId], (updateErr) => {
+    const updateStudentQuery = 'UPDATE my_database.students SET status = ? WHERE studentId = ?';
+    connection.query(updateStudentQuery, [newStatus, studentId], (updateErr) => {
       if (updateErr) {
         console.error('Error updating student status:', updateErr);
         return res.status(500).json({ message: 'Error updating student status' });

@@ -147,8 +147,6 @@ async function loadStudents() {
     }
 }
 
-
-
 function renderStudentsTable() {
     const searchQuery = document.getElementById('searchStudents').value.toLowerCase();
     const filterCourse = document.getElementById('filterCourse').value;
