@@ -965,6 +965,238 @@ app.listen(port, () => {
   console.log(`Server running on http://localhost:${port}`);
 });
 
+// ─── Lecturer APIs ────────────────────────────────────────────────────────────
+
+// GET all lecturers with their assigned courses, departments and modules
+app.get('/api/admin/lecturers', noCache, hasRole('admin'), (req, res) => {
+  const query = `
+    SELECT
+      l.lecturerId,
+      l.user_id,
+      u.first_name,
+      u.last_name,
+      u.email,
+      u.is_active,
+      GROUP_CONCAT(DISTINCT c.courseId ORDER BY c.courseId SEPARATOR ',') AS courseIds,
+      GROUP_CONCAT(DISTINCT c.courseName ORDER BY c.courseName SEPARATOR ', ') AS courses,
+      GROUP_CONCAT(DISTINCT d.departmentId ORDER BY d.departmentId SEPARATOR ',') AS departmentIds,
+      GROUP_CONCAT(DISTINCT d.departmentName ORDER BY d.departmentName SEPARATOR ', ') AS departmentNames,
+      GROUP_CONCAT(DISTINCT m.moduleName ORDER BY m.moduleName SEPARATOR ', ') AS modules,
+      GROUP_CONCAT(DISTINCT m.moduleId ORDER BY m.moduleId SEPARATOR ',') AS moduleIds
+    FROM my_database.lecturers l
+    JOIN my_database.users u ON u.id = l.user_id
+    LEFT JOIN my_database.lecturer_courses lc ON lc.lecturerId = l.lecturerId
+    LEFT JOIN my_database.courses c ON c.courseId = lc.courseId
+    LEFT JOIN my_database.departments d ON d.departmentId = c.departmentId
+    LEFT JOIN my_database.course_modules cm ON cm.courseId = c.courseId
+    LEFT JOIN my_database.modules m ON m.moduleId = cm.moduleId
+    GROUP BY l.lecturerId
+    ORDER BY l.lecturerId DESC
+  `;
+
+  connection.query(query, (err, results) => {
+    if (err) {
+      console.error('Error fetching lecturers:', err);
+      return res.status(500).json({ message: 'Error fetching lecturers' });
+    }
+
+    const formatted = results.map(row => ({
+      lecturerId: row.lecturerId,
+      userId: row.user_id,
+      firstName: row.first_name,
+      lastName: row.last_name,
+      email: row.email,
+      isActive: row.is_active,
+      courseIds: row.courseIds ? row.courseIds.split(',').map(Number) : [],
+      courses: row.courses || '',
+      departmentNames: row.departmentNames || '',
+      modules: row.modules || '',
+      moduleIds: row.moduleIds ? row.moduleIds.split(',').map(Number) : []
+    }));
+
+    res.json(formatted);
+  });
+});
+
+// POST create a new lecturer (creates user + lecturers row + optional course assignments)
+app.post('/api/admin/lecturers', noCache, hasRole('admin'), async (req, res) => {
+  const { firstName, lastName, email, username, password, courseIds } = req.body;
+
+  if (!firstName || !lastName || !email || !password) {
+    return res.status(400).json({ message: 'firstName, lastName, email and password are required' });
+  }
+
+  const bcrypt = require('bcrypt');
+
+  try {
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const generatedUsername = username || `${firstName.toLowerCase()}.${lastName.toLowerCase()}`.replace(/\s+/g, '.');
+
+    const insertUser = `
+      INSERT INTO my_database.users (username, email, first_name, last_name, role, password_hash, is_active)
+      VALUES (?, ?, ?, ?, 'lecturer', ?, 1)
+    `;
+    connection.query(insertUser, [generatedUsername, email, firstName, lastName, hashedPassword], (err, userResult) => {
+      if (err) {
+        if (err.code === 'ER_DUP_ENTRY') {
+          return res.status(400).json({ message: 'Email or username already exists' });
+        }
+        console.error('Error creating lecturer user:', err);
+        return res.status(500).json({ message: 'Error creating lecturer' });
+      }
+
+      const newUserId = userResult.insertId;
+
+      connection.query(
+        'INSERT INTO my_database.lecturers (email, user_id) VALUES (?, ?)',
+        [email, newUserId],
+        (err2, lecturerResult) => {
+          if (err2) {
+            console.error('Error inserting into lecturers:', err2);
+            return res.status(500).json({ message: 'User created but failed to create lecturer record' });
+          }
+
+          const newLecturerId = lecturerResult.insertId;
+
+          // Assign courses via lecturer_courses
+          if (courseIds && courseIds.length > 0) {
+            const values = courseIds.map(cid => [newLecturerId, cid]);
+            connection.query(
+              'INSERT IGNORE INTO my_database.lecturer_courses (lecturerId, courseId) VALUES ?',
+              [values],
+              (err3) => {
+                if (err3) console.error('Error assigning courses to lecturer:', err3);
+                res.status(201).json({ message: 'Lecturer created successfully', id: newLecturerId, email });
+              }
+            );
+          } else {
+            res.status(201).json({ message: 'Lecturer created successfully', id: newLecturerId, email });
+          }
+        }
+      );
+    });
+  } catch (err) {
+    console.error('Error hashing password:', err);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
+// PUT update a lecturer
+app.put('/api/admin/lecturers/:id', noCache, hasRole('admin'), (req, res) => {
+  const lecturerId = req.params.id;
+  const { firstName, lastName, email, courseIds } = req.body;
+
+  // Update users table
+  const updateUser = `
+    UPDATE my_database.users u
+    JOIN my_database.lecturers l ON l.user_id = u.id
+    SET u.first_name = ?, u.last_name = ?, u.email = ?
+    WHERE l.lecturerId = ?
+  `;
+  connection.query(updateUser, [firstName, lastName, email, lecturerId], (err) => {
+    if (err) {
+      console.error('Error updating lecturer user:', err);
+      return res.status(500).json({ message: 'Error updating lecturer' });
+    }
+
+    // Replace course assignments
+    connection.query(
+      'DELETE FROM my_database.lecturer_courses WHERE lecturerId = ?',
+      [lecturerId],
+      (delErr) => {
+        if (delErr) {
+          console.error('Error clearing lecturer courses:', delErr);
+          return res.status(500).json({ message: 'Lecturer updated but failed to update course assignments' });
+        }
+
+        if (courseIds && courseIds.length > 0) {
+          const values = courseIds.map(cid => [lecturerId, cid]);
+          connection.query(
+            'INSERT IGNORE INTO my_database.lecturer_courses (lecturerId, courseId) VALUES ?',
+            [values],
+            (insErr) => {
+              if (insErr) {
+                console.error('Error inserting lecturer courses:', insErr);
+                return res.status(500).json({ message: 'Lecturer updated but failed to assign courses' });
+              }
+              res.json({ message: 'Lecturer updated successfully' });
+            }
+          );
+        } else {
+          res.json({ message: 'Lecturer updated successfully' });
+        }
+      }
+    );
+  });
+});
+
+// PATCH toggle lecturer active status
+app.patch('/api/admin/lecturers/:id/status', noCache, hasRole('admin'), (req, res) => {
+  const lecturerId = req.params.id;
+
+  const selectQuery = `
+    SELECT u.is_active, u.id AS userId
+    FROM my_database.lecturers l
+    JOIN my_database.users u ON u.id = l.user_id
+    WHERE l.lecturerId = ?
+  `;
+
+  connection.query(selectQuery, [lecturerId], (err, results) => {
+    if (err || results.length === 0) {
+      return res.status(404).json({ message: 'Lecturer not found' });
+    }
+
+    const newIsActive = results[0].is_active ? 0 : 1;
+    connection.query(
+      'UPDATE my_database.users SET is_active = ? WHERE id = ?',
+      [newIsActive, results[0].userId],
+      (updateErr) => {
+        if (updateErr) {
+          console.error('Error toggling lecturer status:', updateErr);
+          return res.status(500).json({ message: 'Error updating lecturer status' });
+        }
+        res.json({ message: 'Lecturer status updated', isActive: newIsActive });
+      }
+    );
+  });
+});
+
+// GET all departments
+app.get('/api/departments', noCache, hasRole('admin'), (req, res) => {
+  connection.query(
+    'SELECT departmentId, departmentCode, departmentName FROM my_database.departments ORDER BY departmentName',
+    (err, results) => {
+      if (err) {
+        console.error('Error fetching departments:', err);
+        return res.status(500).json({ message: 'Error fetching departments' });
+      }
+      res.json(results);
+    }
+  );
+});
+
+// GET modules for a specific department (via courses that belong to the department)
+app.get('/api/departments/:id/modules', noCache, hasRole('admin'), (req, res) => {
+  const departmentId = req.params.id;
+  const query = `
+    SELECT DISTINCT m.moduleId, m.moduleCode, m.moduleName
+    FROM my_database.modules m
+    JOIN my_database.course_modules cm ON cm.moduleId = m.moduleId
+    JOIN my_database.courses c ON c.courseId = cm.courseId
+    WHERE c.departmentId = ?
+    ORDER BY m.moduleName
+  `;
+  connection.query(query, [departmentId], (err, results) => {
+    if (err) {
+      console.error('Error fetching department modules:', err);
+      return res.status(500).json({ message: 'Error fetching modules' });
+    }
+    res.json(results);
+  });
+});
+
+// ─── Courses API ──────────────────────────────────────────────────────────────
+
 // API: Get courses (majors) - returns code, full name and shortName for UI
 app.get('/api/courses', noCache, hasRole('admin'), (req, res) => {
   const query = `
