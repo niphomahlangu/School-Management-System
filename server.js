@@ -1216,3 +1216,340 @@ app.get('/api/courses', noCache, hasRole('admin'), (req, res) => {
     res.json(results);
   });
 });
+
+// ─── Admin Courses CRUD ───────────────────────────────────────────────────────
+
+// GET all courses with department and module info
+app.get('/api/admin/courses', noCache, hasRole('admin'), (req, res) => {
+  const query = `
+    SELECT
+      c.courseId,
+      c.courseCode,
+      c.courseName,
+      TRIM(SUBSTRING_INDEX(c.courseName, ':', -1)) AS shortName,
+      c.departmentId,
+      d.departmentName,
+      d.departmentCode,
+      GROUP_CONCAT(DISTINCT m.moduleId ORDER BY m.moduleId SEPARATOR ',') AS moduleIds,
+      GROUP_CONCAT(DISTINCT m.moduleName ORDER BY m.moduleName SEPARATOR '||') AS moduleNames,
+      GROUP_CONCAT(DISTINCT m.moduleCode ORDER BY m.moduleName SEPARATOR '||') AS moduleCodes
+    FROM my_database.courses c
+    LEFT JOIN my_database.departments d ON d.departmentId = c.departmentId
+    LEFT JOIN my_database.course_modules cm ON cm.courseId = c.courseId
+    LEFT JOIN my_database.modules m ON m.moduleId = cm.moduleId
+    GROUP BY c.courseId
+    ORDER BY c.courseName
+  `;
+  connection.query(query, (err, results) => {
+    if (err) {
+      console.error('Error fetching courses:', err);
+      return res.status(500).json({ message: 'Error fetching courses' });
+    }
+    const formatted = results.map(r => ({
+      courseId: r.courseId,
+      courseCode: r.courseCode,
+      courseName: r.courseName,
+      shortName: r.shortName,
+      departmentId: r.departmentId,
+      departmentName: r.departmentName || null,
+      departmentCode: r.departmentCode || null,
+      moduleIds: r.moduleIds ? r.moduleIds.split(',').map(Number) : [],
+      moduleNames: r.moduleNames ? r.moduleNames.split('||') : [],
+      moduleCodes: r.moduleCodes ? r.moduleCodes.split('||') : []
+    }));
+    res.json(formatted);
+  });
+});
+
+// POST create a course
+app.post('/api/admin/courses', noCache, hasRole('admin'), (req, res) => {
+  const { courseCode, courseName, departmentId } = req.body;
+  if (!courseCode || !courseName) {
+    return res.status(400).json({ message: 'courseCode and courseName are required' });
+  }
+  const query = 'INSERT INTO my_database.courses (courseCode, courseName, departmentId) VALUES (?, ?, ?)';
+  connection.query(query, [courseCode, courseName, departmentId || null], (err, result) => {
+    if (err) {
+      if (err.code === 'ER_DUP_ENTRY') {
+        return res.status(400).json({ message: 'Course code already exists' });
+      }
+      console.error('Error creating course:', err);
+      return res.status(500).json({ message: 'Error creating course' });
+    }
+    res.status(201).json({ courseId: result.insertId, courseCode, courseName, departmentId: departmentId || null });
+  });
+});
+
+// PUT update a course
+app.put('/api/admin/courses/:id', noCache, hasRole('admin'), (req, res) => {
+  const courseId = req.params.id;
+  const { courseCode, courseName, departmentId } = req.body;
+  if (!courseCode || !courseName) {
+    return res.status(400).json({ message: 'courseCode and courseName are required' });
+  }
+  const query = 'UPDATE my_database.courses SET courseCode = ?, courseName = ?, departmentId = ? WHERE courseId = ?';
+  connection.query(query, [courseCode, courseName, departmentId || null, courseId], (err, result) => {
+    if (err) {
+      if (err.code === 'ER_DUP_ENTRY') {
+        return res.status(400).json({ message: 'Course code already exists' });
+      }
+      console.error('Error updating course:', err);
+      return res.status(500).json({ message: 'Error updating course' });
+    }
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: 'Course not found' });
+    }
+    res.json({ message: 'Course updated successfully' });
+  });
+});
+
+// DELETE a course
+app.delete('/api/admin/courses/:id', noCache, hasRole('admin'), async (req, res) => {
+  const courseId = req.params.id;
+  try {
+    await new Promise((resolve, reject) => {
+      connection.query('DELETE FROM my_database.course_modules WHERE courseId = ?', [courseId], (err) => {
+        if (err) reject(err); else resolve();
+      });
+    });
+    await new Promise((resolve, reject) => {
+      connection.query('DELETE FROM my_database.lecturer_courses WHERE courseId = ?', [courseId], (err) => {
+        if (err) reject(err); else resolve();
+      });
+    });
+    await new Promise((resolve, reject) => {
+      connection.query('DELETE FROM my_database.student_courses WHERE courseId = ?', [courseId], (err) => {
+        if (err) reject(err); else resolve();
+      });
+    });
+    const result = await new Promise((resolve, reject) => {
+      connection.query('DELETE FROM my_database.courses WHERE courseId = ?', [courseId], (err, r) => {
+        if (err) reject(err); else resolve(r);
+      });
+    });
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: 'Course not found' });
+    }
+    res.json({ message: 'Course deleted successfully' });
+  } catch (err) {
+    console.error('Error deleting course:', err);
+    res.status(500).json({ message: 'Error deleting course' });
+  }
+});
+
+// ─── Course Modules Management ────────────────────────────────────────────────
+
+// GET all standalone modules (for add-module dropdown)
+app.get('/api/admin/modules', noCache, hasRole('admin'), (req, res) => {
+  connection.query(
+    'SELECT moduleId, moduleCode, moduleName FROM my_database.modules ORDER BY moduleName',
+    (err, results) => {
+      if (err) {
+        console.error('Error fetching modules:', err);
+        return res.status(500).json({ message: 'Error fetching modules' });
+      }
+      res.json(results);
+    }
+  );
+});
+
+// POST create a new module and optionally link to a course
+app.post('/api/admin/modules', noCache, hasRole('admin'), async (req, res) => {
+  const { moduleCode, moduleName, courseId } = req.body;
+  if (!moduleCode || !moduleName) {
+    return res.status(400).json({ message: 'moduleCode and moduleName are required' });
+  }
+  try {
+    const result = await new Promise((resolve, reject) => {
+      connection.query(
+        'INSERT INTO my_database.modules (moduleCode, moduleName) VALUES (?, ?)',
+        [moduleCode, moduleName],
+        (err, r) => { if (err) reject(err); else resolve(r); }
+      );
+    });
+    const moduleId = result.insertId;
+    if (courseId) {
+      await new Promise((resolve, reject) => {
+        connection.query(
+          'INSERT IGNORE INTO my_database.course_modules (courseId, moduleId) VALUES (?, ?)',
+          [courseId, moduleId],
+          (err, r) => { if (err) reject(err); else resolve(r); }
+        );
+      });
+    }
+    res.status(201).json({ moduleId, moduleCode, moduleName });
+  } catch (err) {
+    if (err.code === 'ER_DUP_ENTRY') {
+      return res.status(400).json({ message: 'Module code already exists' });
+    }
+    console.error('Error creating module:', err);
+    res.status(500).json({ message: 'Error creating module' });
+  }
+});
+
+// PUT update a module
+app.put('/api/admin/modules/:id', noCache, hasRole('admin'), (req, res) => {
+  const moduleId = req.params.id;
+  const { moduleCode, moduleName } = req.body;
+  if (!moduleCode || !moduleName) {
+    return res.status(400).json({ message: 'moduleCode and moduleName are required' });
+  }
+  connection.query(
+    'UPDATE my_database.modules SET moduleCode = ?, moduleName = ? WHERE moduleId = ?',
+    [moduleCode, moduleName, moduleId],
+    (err, result) => {
+      if (err) {
+        if (err.code === 'ER_DUP_ENTRY') {
+          return res.status(400).json({ message: 'Module code already exists' });
+        }
+        console.error('Error updating module:', err);
+        return res.status(500).json({ message: 'Error updating module' });
+      }
+      if (result.affectedRows === 0) {
+        return res.status(404).json({ message: 'Module not found' });
+      }
+      res.json({ message: 'Module updated' });
+    }
+  );
+});
+
+// POST link an existing module to a course
+app.post('/api/admin/courses/:id/modules', noCache, hasRole('admin'), (req, res) => {
+  const courseId = req.params.id;
+  const { moduleId } = req.body;
+  if (!moduleId) {
+    return res.status(400).json({ message: 'moduleId is required' });
+  }
+  connection.query(
+    'INSERT IGNORE INTO my_database.course_modules (courseId, moduleId) VALUES (?, ?)',
+    [courseId, moduleId],
+    (err) => {
+      if (err) {
+        console.error('Error linking module to course:', err);
+        return res.status(500).json({ message: 'Error linking module' });
+      }
+      res.status(201).json({ message: 'Module linked to course' });
+    }
+  );
+});
+
+// DELETE unlink a module from a course
+app.delete('/api/admin/courses/:courseId/modules/:moduleId', noCache, hasRole('admin'), (req, res) => {
+  const { courseId, moduleId } = req.params;
+  connection.query(
+    'DELETE FROM my_database.course_modules WHERE courseId = ? AND moduleId = ?',
+    [courseId, moduleId],
+    (err, result) => {
+      if (err) {
+        console.error('Error unlinking module:', err);
+        return res.status(500).json({ message: 'Error unlinking module' });
+      }
+      if (result.affectedRows === 0) {
+        return res.status(404).json({ message: 'Link not found' });
+      }
+      res.json({ message: 'Module unlinked from course' });
+    }
+  );
+});
+
+// ─── Admin Departments CRUD ───────────────────────────────────────────────────
+
+// GET all departments with course count
+app.get('/api/admin/departments', noCache, hasRole('admin'), (req, res) => {
+  const query = `
+    SELECT
+      d.departmentId,
+      d.departmentCode,
+      d.departmentName,
+      COUNT(c.courseId) AS courseCount
+    FROM my_database.departments d
+    LEFT JOIN my_database.courses c ON c.departmentId = d.departmentId
+    GROUP BY d.departmentId
+    ORDER BY d.departmentName
+  `;
+  connection.query(query, (err, results) => {
+    if (err) {
+      console.error('Error fetching departments:', err);
+      return res.status(500).json({ message: 'Error fetching departments' });
+    }
+    res.json(results);
+  });
+});
+
+// POST create a department
+app.post('/api/admin/departments', noCache, hasRole('admin'), (req, res) => {
+  const { departmentCode, departmentName } = req.body;
+  if (!departmentCode || !departmentName) {
+    return res.status(400).json({ message: 'departmentCode and departmentName are required' });
+  }
+  connection.query(
+    'INSERT INTO my_database.departments (departmentCode, departmentName) VALUES (?, ?)',
+    [departmentCode, departmentName],
+    (err, result) => {
+      if (err) {
+        if (err.code === 'ER_DUP_ENTRY') {
+          return res.status(400).json({ message: 'Department code already exists' });
+        }
+        console.error('Error creating department:', err);
+        return res.status(500).json({ message: 'Error creating department' });
+      }
+      res.status(201).json({ departmentId: result.insertId, departmentCode, departmentName });
+    }
+  );
+});
+
+// PUT update a department
+app.put('/api/admin/departments/:id', noCache, hasRole('admin'), (req, res) => {
+  const departmentId = req.params.id;
+  const { departmentCode, departmentName } = req.body;
+  if (!departmentCode || !departmentName) {
+    return res.status(400).json({ message: 'departmentCode and departmentName are required' });
+  }
+  connection.query(
+    'UPDATE my_database.departments SET departmentCode = ?, departmentName = ? WHERE departmentId = ?',
+    [departmentCode, departmentName, departmentId],
+    (err, result) => {
+      if (err) {
+        if (err.code === 'ER_DUP_ENTRY') {
+          return res.status(400).json({ message: 'Department code already exists' });
+        }
+        console.error('Error updating department:', err);
+        return res.status(500).json({ message: 'Error updating department' });
+      }
+      if (result.affectedRows === 0) {
+        return res.status(404).json({ message: 'Department not found' });
+      }
+      res.json({ message: 'Department updated successfully' });
+    }
+  );
+});
+
+// DELETE a department
+app.delete('/api/admin/departments/:id', noCache, hasRole('admin'), (req, res) => {
+  const departmentId = req.params.id;
+  // Nullify departmentId on courses before deleting
+  connection.query(
+    'UPDATE my_database.courses SET departmentId = NULL WHERE departmentId = ?',
+    [departmentId],
+    (err) => {
+      if (err) {
+        console.error('Error unlinking courses from department:', err);
+        return res.status(500).json({ message: 'Error deleting department' });
+      }
+      connection.query(
+        'DELETE FROM my_database.departments WHERE departmentId = ?',
+        [departmentId],
+        (err2, result) => {
+          if (err2) {
+            console.error('Error deleting department:', err2);
+            return res.status(500).json({ message: 'Error deleting department' });
+          }
+          if (result.affectedRows === 0) {
+            return res.status(404).json({ message: 'Department not found' });
+          }
+          res.json({ message: 'Department deleted successfully' });
+        }
+      );
+    }
+  );
+});

@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Courses - School Management System</title>
+    <link rel="stylesheet" href="/shared/index.css">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <button class="menu-toggle" id="menuToggle">
+            <span>☰</span>
+        </button>
+        <h1 class="header-title">Course Management</h1>
+        <div class="user-profile">
+            <button class="profile-button" id="profileButton">
+                <div class="profile-icon">A</div>
+                <span class="profile-name">Admin</span>
+                <span class="dropdown-arrow">▼</span>
+            </button>
+            <div class="dropdown-menu" id="dropdownMenu">
+                <a href="#profile">My Profile</a>
+                <a href="#settings">Settings</a>
+                <div class="divider"></div>
+                <button class="logout-button" id="logoutButton">Logout</button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Sidebar Navigation -->
+    <nav class="sidebar" id="sidebar">
+        <ul class="sidebar-nav">
+            <li><a href="index.html"><span class="nav-icon">📊</span> Dashboard</a></li>
+            <li><a href="users.html"><span class="nav-icon">👥</span> Manage Users</a></li>
+            <li><a href="students.html"><span class="nav-icon">👨‍🎓</span> Students</a></li>
+            <li><a href="lecturers.html"><span class="nav-icon">👨‍🏫</span> Lecturers</a></li>
+            <li><a href="courses.html" class="active"><span class="nav-icon">📚</span> Courses</a></li>
+            <li><a href="departments.html"><span class="nav-icon">🏛️</span> Departments</a></li>
+            <li><a href="#enrollment"><span class="nav-icon">📝</span> Enrollment</a></li>
+            <li><a href="#reports"><span class="nav-icon">📈</span> Reports</a></li>
+            <li><a href="#settings"><span class="nav-icon">⚙️</span> System Settings</a></li>
+        </ul>
+    </nav>
+
+    <!-- Overlay for mobile -->
+    <div class="overlay" id="overlay"></div>
+
+    <!-- Main Content -->
+    <main class="main-content" id="mainContent">
+        <div class="content-card">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+                <h1>Manage Courses</h1>
+                <button id="addCourseBtn" class="btn btn-primary">+ Add Course</button>
+            </div>
+
+            <!-- Search & Filter -->
+            <div style="display: flex; gap: 1rem; margin-bottom: 1.5rem; flex-wrap: wrap;">
+                <input type="text" id="searchCourses" placeholder="Search by name or code..." class="search-input" style="flex: 1; min-width: 200px;">
+                <select id="filterDepartment" class="filter-select" style="min-width: 180px;">
+                    <option value="">All Departments</option>
+                </select>
+            </div>
+
+            <!-- Courses Table -->
+            <div class="table-container" style="overflow-x: auto;">
+                <table style="width: 100%; border-collapse: collapse;">
+                    <thead style="background: #f8f9fa;">
+                        <tr>
+                            <th style="padding: 12px; text-align: left; font-weight: 600; border-bottom: 2px solid #e0e0e0;">Code</th>
+                            <th style="padding: 12px; text-align: left; font-weight: 600; border-bottom: 2px solid #e0e0e0;">Course Name</th>
+                            <th style="padding: 12px; text-align: left; font-weight: 600; border-bottom: 2px solid #e0e0e0;">Department</th>
+                            <th style="padding: 12px; text-align: left; font-weight: 600; border-bottom: 2px solid #e0e0e0;">Modules</th>
+                            <th style="padding: 12px; text-align: center; font-weight: 600; border-bottom: 2px solid #e0e0e0;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="coursesTableBody"></tbody>
+                </table>
+            </div>
+            <div id="paginationControls" style="margin-top: 1rem; display: flex; justify-content: flex-end;"></div>
+        </div>
+    </main>
+
+    <!-- Add/Edit Course Modal -->
+    <div id="courseModal" class="modal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; justify-content: center; align-items: center; z-index: 1000;">
+        <div class="modal-content" style="background: white; border-radius: 8px; padding: 2rem; max-width: 600px; width: 90%; box-shadow: 0 10px 40px rgba(0,0,0,0.2); max-height: 90vh; overflow-y: auto;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                <h2 id="courseModalTitle">Add Course</h2>
+                <button onclick="closeCourseModal()" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #666;">&times;</button>
+            </div>
+            <form id="courseForm">
+                <div style="margin-bottom: 1rem;">
+                    <label for="courseCode" style="display: block; margin-bottom: 0.5rem; font-weight: 500;">Course Code *</label>
+                    <input type="text" id="courseCode" required placeholder="e.g. BSC-CS" style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px; font-size: 1rem; box-sizing: border-box;">
+                </div>
+                <div style="margin-bottom: 1rem;">
+                    <label for="courseName" style="display: block; margin-bottom: 0.5rem; font-weight: 500;">Course Name *</label>
+                    <input type="text" id="courseName" required placeholder="e.g. Bachelor of Science: Computer Science" style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px; font-size: 1rem; box-sizing: border-box;">
+                </div>
+                <div style="margin-bottom: 1.5rem;">
+                    <label for="courseDepartment" style="display: block; margin-bottom: 0.5rem; font-weight: 500;">Department</label>
+                    <select id="courseDepartment" style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px; font-size: 1rem;">
+                        <option value="">— No Department —</option>
+                    </select>
+                </div>
+                <div style="display: flex; gap: 1rem; justify-content: flex-end;">
+                    <button type="button" onclick="closeCourseModal()" class="btn btn-secondary" style="padding: 0.75rem 1.5rem; border: 1px solid #ddd; background: #f5f5f5; border-radius: 4px; cursor: pointer;">Cancel</button>
+                    <button type="submit" class="btn btn-primary" style="padding: 0.75rem 1.5rem; background: #2563eb; color: white; border: none; border-radius: 4px; cursor: pointer;">Save Course</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Manage Modules Modal -->
+    <div id="modulesModal" class="modal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; justify-content: center; align-items: center; z-index: 1000;">
+        <div class="modal-content" style="background: white; border-radius: 8px; padding: 2rem; max-width: 650px; width: 90%; box-shadow: 0 10px 40px rgba(0,0,0,0.2); max-height: 90vh; overflow-y: auto;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                <div>
+                    <h2 id="modulesModalTitle">Modules</h2>
+                    <p id="modulesModalSubtitle" style="color: #666; font-size: 0.9rem; margin-top: 0.25rem;"></p>
+                </div>
+                <button onclick="closeModulesModal()" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #666;">&times;</button>
+            </div>
+
+            <!-- Current modules list -->
+            <div style="margin-bottom: 1.5rem;">
+                <h3 style="font-size: 1rem; margin-bottom: 0.75rem; color: #374151;">Assigned Modules</h3>
+                <div id="assignedModulesList" style="min-height: 40px; border: 1px solid #e5e7eb; border-radius: 6px; padding: 0.5rem;"></div>
+            </div>
+
+            <!-- Link existing module -->
+            <div style="background: #f8f9fa; padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
+                <h3 style="font-size: 1rem; margin-bottom: 0.75rem; color: #374151;">Link Existing Module</h3>
+                <div style="display: flex; gap: 0.75rem;">
+                    <select id="existingModuleSelect" style="flex: 1; padding: 0.6rem; border: 1px solid #ddd; border-radius: 4px; font-size: 0.95rem;">
+                        <option value="">Select a module...</option>
+                    </select>
+                    <button onclick="linkExistingModule()" class="btn btn-primary" style="padding: 0.6rem 1.2rem; background: #2563eb; color: white; border: none; border-radius: 4px; cursor: pointer; white-space: nowrap;">Add</button>
+                </div>
+            </div>
+
+            <!-- Create new module -->
+            <div style="background: #f8f9fa; padding: 1rem; border-radius: 8px;">
+                <h3 style="font-size: 1rem; margin-bottom: 0.75rem; color: #374151;">Create New Module</h3>
+                <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 0.75rem; margin-bottom: 0.75rem;">
+                    <input type="text" id="newModuleCode" placeholder="Code (e.g. CS101-1)" style="padding: 0.6rem; border: 1px solid #ddd; border-radius: 4px; font-size: 0.95rem;">
+                    <input type="text" id="newModuleName" placeholder="Module name" style="padding: 0.6rem; border: 1px solid #ddd; border-radius: 4px; font-size: 0.95rem;">
+                </div>
+                <button onclick="createAndLinkModule()" class="btn btn-primary" style="padding: 0.6rem 1.2rem; background: #10b981; color: white; border: none; border-radius: 4px; cursor: pointer;">Create &amp; Link</button>
+            </div>
+
+            <div style="display: flex; justify-content: flex-end; margin-top: 1.5rem;">
+                <button onclick="closeModulesModal()" class="btn btn-secondary" style="padding: 0.75rem 1.5rem; border: 1px solid #ddd; background: #f5f5f5; border-radius: 4px; cursor: pointer;">Done</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- View Course Modal -->
+    <div id="viewCourseModal" class="modal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; justify-content: center; align-items: center; z-index: 1000;">
+        <div class="modal-content" style="background: white; border-radius: 8px; padding: 2rem; max-width: 650px; width: 90%; box-shadow: 0 10px 40px rgba(0,0,0,0.2); max-height: 90vh; overflow-y: auto;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                <h2>Course Details</h2>
+                <button onclick="closeViewCourseModal()" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #666;">&times;</button>
+            </div>
+            <div id="viewCourseContent"></div>
+            <div style="display: flex; justify-content: flex-end; margin-top: 2rem;">
+                <button onclick="closeViewCourseModal()" class="btn btn-secondary" style="padding: 0.75rem 1.5rem; border: 1px solid #ddd; background: #f5f5f5; border-radius: 4px; cursor: pointer;">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Overlay -->
+    <div id="modalOverlay" class="modal-overlay" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 500;"></div>
+
+    <script src="/shared/main.js"></script>
+    <script src="/admin/courses.js"></script>
+</body>
+</html>
