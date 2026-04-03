@@ -22,6 +22,20 @@
                 "<node_internals>/**"
             ],
             "program": "${workspaceFolder}\\server.js"
+        },
+        {
+            "type": "chrome",
+            "request": "launch",
+            "name": "Debug Frontend (Chrome)",
+            "url": "http://localhost:3000",
+            "webRoot": "${workspaceFolder}"
+        },
+        {
+            "type": "msedge",
+            "request": "launch",
+            "name": "Debug Frontend (Edge)",
+            "url": "http://localhost:3000",
+            "webRoot": "${workspaceFolder}"
         }
     ]
 }

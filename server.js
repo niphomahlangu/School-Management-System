@@ -1020,7 +1020,9 @@ app.get('/api/admin/lecturers', noCache, hasRole('admin'), (req, res) => {
 
 // POST create a new lecturer (creates user + lecturers row + optional course assignments)
 app.post('/api/admin/lecturers', noCache, hasRole('admin'), async (req, res) => {
-  const { firstName, lastName, email, username, password, courseIds } = req.body;
+  console.log('Received request to create lecturer:', req.body);
+
+  const { firstName, lastName, email, username, password, courseIds } = req.body;  
 
   if (!firstName || !lastName || !email || !password) {
     return res.status(400).json({ message: 'firstName, lastName, email and password are required' });
@@ -1200,7 +1202,7 @@ app.get('/api/departments/:id/modules', noCache, hasRole('admin'), (req, res) =>
 // API: Get courses (majors) - returns code, full name and shortName for UI
 app.get('/api/courses', noCache, hasRole('admin'), (req, res) => {
   const query = `
-    SELECT courseCode, courseName,
+    SELECT courseId, courseCode, courseName,
       TRIM(SUBSTRING_INDEX(courseName, ':', -1)) AS shortName
     FROM my_database.courses
     ORDER BY shortName
