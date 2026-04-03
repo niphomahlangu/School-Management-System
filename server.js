@@ -965,6 +965,36 @@ app.listen(port, () => {
   console.log(`Server running on http://localhost:${port}`);
 });
 
+// ─── Dashboard Stats API ──────────────────────────────────────────────────────
+
+app.get('/api/admin/stats', noCache, hasRole('admin'), (req, res) => {
+  const queries = {
+    students: 'SELECT COUNT(*) AS count FROM my_database.students',
+    lecturers: 'SELECT COUNT(*) AS count FROM my_database.lecturers',
+    courses: 'SELECT COUNT(*) AS count FROM my_database.courses',
+    departments: 'SELECT COUNT(*) AS count FROM my_database.departments'
+  };
+
+  const results = {};
+  const keys = Object.keys(queries);
+  let completed = 0;
+
+  keys.forEach(key => {
+    connection.query(queries[key], (err, rows) => {
+      if (err) {
+        console.error(`Error fetching ${key} count:`, err);
+        results[key] = 0;
+      } else {
+        results[key] = rows[0].count;
+      }
+      completed++;
+      if (completed === keys.length) {
+        res.json(results);
+      }
+    });
+  });
+});
+
 // ─── Lecturer APIs ────────────────────────────────────────────────────────────
 
 // GET all lecturers with their assigned courses, departments and modules

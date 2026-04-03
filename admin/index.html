@@ -54,27 +54,42 @@
                 <div class="stat-card" style="background: #f8f9fa; padding: 1.5rem; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
                     <div style="font-size: 2rem;">👨‍🎓</div>
                     <h3>Total Students</h3>
-                    <p style="font-size: 1.5rem; font-weight: bold; color: #2563eb;">1,234</p>
+                    <p id="statStudents" style="font-size: 1.5rem; font-weight: bold; color: #2563eb;">—</p>
                 </div>
                 <div class="stat-card" style="background: #f8f9fa; padding: 1.5rem; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
                     <div style="font-size: 2rem;">👨‍🏫</div>
                     <h3>Total Lecturers</h3>
-                    <p style="font-size: 1.5rem; font-weight: bold; color: #2563eb;">89</p>
+                    <p id="statLecturers" style="font-size: 1.5rem; font-weight: bold; color: #2563eb;">—</p>
                 </div>
                 <div class="stat-card" style="background: #f8f9fa; padding: 1.5rem; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
                     <div style="font-size: 2rem;">📚</div>
                     <h3>Active Courses</h3>
-                    <p style="font-size: 1.5rem; font-weight: bold; color: #2563eb;">156</p>
+                    <p id="statCourses" style="font-size: 1.5rem; font-weight: bold; color: #2563eb;">—</p>
                 </div>
                 <div class="stat-card" style="background: #f8f9fa; padding: 1.5rem; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
                     <div style="font-size: 2rem;">🏛️</div>
                     <h3>Departments</h3>
-                    <p style="font-size: 1.5rem; font-weight: bold; color: #2563eb;">12</p>
+                    <p id="statDepartments" style="font-size: 1.5rem; font-weight: bold; color: #2563eb;">—</p>
                 </div>
             </div>
         </div>
     </main>
 
     <script src="/shared/main.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            try {
+                const resp = await fetch('/api/admin/stats');
+                if (!resp.ok) return;
+                const data = await resp.json();
+                document.getElementById('statStudents').textContent = data.students.toLocaleString();
+                document.getElementById('statLecturers').textContent = data.lecturers.toLocaleString();
+                document.getElementById('statCourses').textContent = data.courses.toLocaleString();
+                document.getElementById('statDepartments').textContent = data.departments.toLocaleString();
+            } catch (err) {
+                console.error('Error loading stats:', err);
+            }
+        });
+    </script>
 </body>
 </html>
