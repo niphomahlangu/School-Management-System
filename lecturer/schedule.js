@@ -53,110 +53,60 @@ function weekLabel(mondayStr, index) {
 
 // ─── State ────────────────────────────────────────────────────────────────────
 
-let allSessions = [];
+let allSessions  = [];
+let orderedWeeks = [];   // sorted week-start strings derived from allSessions
+let currentWeekPage = 0;
 
-// ─── Rendering ────────────────────────────────────────────────────────────────
+// ─── Rendering helpers ────────────────────────────────────────────────────────
 
 function buildWeekOptions(sessions) {
     const weekFilter = document.getElementById('weekFilter');
     const seen = new Set();
-    const weeks = [];
 
     sessions.forEach(s => {
         const ws = weekStart(s.sessionDate);
-        if (!seen.has(ws)) { seen.add(ws); weeks.push(ws); }
+        if (!seen.has(ws)) { seen.add(ws); orderedWeeks.push(ws); }
     });
 
-    weeks.sort();
-    weeks.forEach((ws, i) => {
+    orderedWeeks.sort();
+    orderedWeeks.forEach((ws, i) => {
         const opt = document.createElement('option');
         opt.value = ws;
         opt.textContent = weekLabel(ws, i);
-        // Pre-select the current week if it's in range
-        if (ws === weekStart(todayStr())) opt.defaultSelected = true;
         weekFilter.appendChild(opt);
     });
 }
 
-function renderSchedule() {
-    const selectedWeek = document.getElementById('weekFilter').value;
-    const search = document.getElementById('searchFilter').value.toLowerCase().trim();
-    const today = todayStr();
-
-    const status  = document.getElementById('scheduleStatus');
-    const content = document.getElementById('scheduleContent');
-
-    // Filter
-    let filtered = allSessions.filter(s => {
-        if (selectedWeek && weekStart(s.sessionDate) !== selectedWeek) return false;
-        if (search) {
-            const haystack = `${s.moduleName} ${s.moduleCode} ${s.venue} ${s.courseNames}`.toLowerCase();
-            if (!haystack.includes(search)) return false;
-        }
-        return true;
-    });
-
-    if (!filtered.length) {
-        status.textContent = allSessions.length
-            ? 'No sessions match the current filter.'
-            : 'No sessions found for your account.';
-        content.innerHTML = '';
-        return;
-    }
-
-    status.textContent = '';
-
-    // Group by date
+function weekTableHtml(weeksToShow, sessions, today) {
     const byDate = {};
-    filtered.forEach(s => {
+    sessions.forEach(s => {
         if (!byDate[s.sessionDate]) byDate[s.sessionDate] = [];
         byDate[s.sessionDate].push(s);
     });
 
-    // Group dates by week
-    const byWeek = {};
-    Object.keys(byDate).sort().forEach(date => {
-        const ws = weekStart(date);
-        if (!byWeek[ws]) byWeek[ws] = [];
-        byWeek[ws].push(date);
-    });
-
-    const weekStarts = Object.keys(byWeek).sort();
-    let weekIndex = 0;
-    // If we're pre-selecting, calculate the offset index properly
-    const weekFilter = document.getElementById('weekFilter');
-    const opts = Array.from(weekFilter.options).filter(o => o.value).map(o => o.value);
-
     let html = '';
+    weeksToShow.forEach(ws => {
+        const datesInWeek = Object.keys(byDate)
+            .filter(d => weekStart(d) === ws)
+            .sort();
+        if (!datesInWeek.length) return;
 
-    weekStarts.forEach(ws => {
-        const idx = opts.indexOf(ws);
-        html += `<div class="week-heading">${esc(weekLabel(ws, idx >= 0 ? idx : weekIndex))}</div>`;
-        weekIndex++;
-
+        const idx = orderedWeeks.indexOf(ws);
+        html += `<div class="week-heading">${esc(weekLabel(ws, idx))}</div>`;
         html += `<div style="overflow-x:auto; margin-bottom:1rem;">
             <table class="schedule-table">
-                <thead>
-                    <tr>
-                        <th>Date</th>
-                        <th>Time</th>
-                        <th>Module</th>
-                        <th>Course</th>
-                        <th>Venue</th>
-                        <th>Notes</th>
-                    </tr>
-                </thead>
+                <thead><tr>
+                    <th>Date</th><th>Time</th><th>Module</th>
+                    <th>Course</th><th>Venue</th><th>Notes</th>
+                </tr></thead>
                 <tbody>`;
 
-        byWeek[ws].forEach(date => {
+        datesInWeek.forEach(date => {
             byDate[date].forEach(s => {
                 const isToday = s.sessionDate === today;
                 html += `
                     <tr>
-                        <td>
-                            ${esc(fmtDate(s.sessionDate))}
-                            ${isToday ? '<span class="today-badge">TODAY</span>' : ''}
-                        </td>
+                        <td>${esc(fmtDate(s.sessionDate))}${isToday ? ' <span class="today-badge">TODAY</span>' : ''}</td>
                         <td style="white-space:nowrap;">${esc(fmtTime(s.startTime))} – ${esc(fmtTime(s.endTime))}</td>
                         <td>
                             <div class="module-name">${esc(s.moduleName)}</div>
@@ -171,8 +121,70 @@ function renderSchedule() {
 
         html += `</tbody></table></div>`;
     });
+    return html;
+}
 
-    content.innerHTML = html;
+function renderSchedule() {
+    const selectedWeek = document.getElementById('weekFilter').value;
+    const search       = document.getElementById('searchFilter').value.toLowerCase().trim();
+    const today        = todayStr();
+
+    const status     = document.getElementById('scheduleStatus');
+    const content    = document.getElementById('scheduleContent');
+    const pagination = document.getElementById('weekPagination');
+
+    // Apply search filter across all sessions
+    const filtered = allSessions.filter(s => {
+        if (!search) return true;
+        const haystack = `${s.moduleName} ${s.moduleCode} ${s.venue} ${s.courseNames}`.toLowerCase();
+        return haystack.includes(search);
+    });
+
+    if (selectedWeek) {
+        // ── Specific week selected: show that week, no pagination ─────────────
+        pagination.hidden = true;
+        const weekSessions = filtered.filter(s => weekStart(s.sessionDate) === selectedWeek);
+        if (!weekSessions.length) {
+            status.textContent = 'No sessions match the current filter.';
+            content.innerHTML  = '';
+            return;
+        }
+        status.textContent = '';
+        content.innerHTML  = weekTableHtml([selectedWeek], weekSessions, today);
+        return;
+    }
+
+    // ── All weeks: paginate one week at a time ────────────────────────────────
+    const matchingWeeks = orderedWeeks.filter(ws =>
+        filtered.some(s => weekStart(s.sessionDate) === ws)
+    );
+
+    if (!matchingWeeks.length) {
+        pagination.hidden  = true;
+        status.textContent = allSessions.length
+            ? 'No sessions match the current filter.'
+            : 'No sessions found for your account.';
+        content.innerHTML = '';
+        return;
+    }
+
+    // Clamp page index
+    if (currentWeekPage >= matchingWeeks.length) currentWeekPage = matchingWeeks.length - 1;
+    if (currentWeekPage < 0) currentWeekPage = 0;
+
+    const ws           = matchingWeeks[currentWeekPage];
+    const weekSessions = filtered.filter(s => weekStart(s.sessionDate) === ws);
+
+    // Update pagination controls
+    pagination.hidden  = false;
+    pagination.style.display = 'flex';
+    document.getElementById('weekPageLabel').textContent =
+        `${weekLabel(ws, orderedWeeks.indexOf(ws))}  (${currentWeekPage + 1} of ${matchingWeeks.length})`;
+    document.getElementById('prevWeekBtn').disabled = currentWeekPage === 0;
+    document.getElementById('nextWeekBtn').disabled = currentWeekPage === matchingWeeks.length - 1;
+
+    status.textContent = '';
+    content.innerHTML  = weekTableHtml([ws], weekSessions, today);
 }
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
@@ -185,6 +197,11 @@ async function loadSchedule() {
 
         document.getElementById('totalCount').textContent = String(allSessions.length);
         buildWeekOptions(allSessions);
+
+        // Start on the current week if it exists in the data
+        const idx = orderedWeeks.indexOf(weekStart(todayStr()));
+        if (idx !== -1) currentWeekPage = idx;
+
         renderSchedule();
     } catch (err) {
         console.error('Error loading schedule:', err);
@@ -193,7 +210,22 @@ async function loadSchedule() {
     }
 }
 
-document.getElementById('weekFilter').addEventListener('change', renderSchedule);
-document.getElementById('searchFilter').addEventListener('input', renderSchedule);
+document.getElementById('weekFilter').addEventListener('change', () => {
+    currentWeekPage = 0;
+    renderSchedule();
+});
+document.getElementById('searchFilter').addEventListener('input', () => {
+    currentWeekPage = 0;
+    renderSchedule();
+});
+document.getElementById('prevWeekBtn').addEventListener('click', () => {
+    currentWeekPage--;
+    renderSchedule();
+});
+document.getElementById('nextWeekBtn').addEventListener('click', () => {
+    currentWeekPage++;
+    renderSchedule();
+});
 
 loadSchedule();
+
