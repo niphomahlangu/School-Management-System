@@ -174,6 +174,48 @@ app.get('/api/user', (req, res) => {
   res.status(401).json({ authenticated: false });
 });
 
+// GET schedule for the currently logged-in lecturer
+app.get('/api/lecturer/schedule', noCache, hasRole('lecturer'), (req, res) => {
+  const query = `
+    SELECT
+      ls.sessionId,
+      DATE_FORMAT(ls.sessionDate, '%Y-%m-%d')  AS sessionDate,
+      TIME_FORMAT(ls.startTime, '%H:%i')        AS startTime,
+      TIME_FORMAT(ls.endTime,   '%H:%i')        AS endTime,
+      COALESCE(ls.venue, '')                    AS venue,
+      COALESCE(ls.notes, '')                    AS notes,
+      m.moduleId,
+      m.moduleCode,
+      m.moduleName,
+      COALESCE(
+        GROUP_CONCAT(DISTINCT c.courseName ORDER BY c.courseName SEPARATOR ', '),
+        ''
+      ) AS courseNames
+    FROM my_database.lecturer_sessions ls
+    JOIN  my_database.lecturers l  ON l.lecturerId = ls.lecturerId
+    JOIN  my_database.modules   m  ON m.moduleId   = ls.moduleId
+    LEFT JOIN my_database.lecturer_courses lc ON lc.lecturerId = l.lecturerId
+    LEFT JOIN my_database.course_modules   cm
+          ON cm.moduleId = ls.moduleId AND cm.courseId = lc.courseId
+    LEFT JOIN my_database.courses c ON c.courseId = cm.courseId
+    WHERE l.user_id = ?
+    GROUP BY
+      ls.sessionId,
+      ls.sessionDate, ls.startTime, ls.endTime,
+      ls.venue, ls.notes,
+      m.moduleId, m.moduleCode, m.moduleName
+    ORDER BY ls.sessionDate ASC, ls.startTime ASC
+  `;
+
+  connection.query(query, [req.session.userId], (err, results) => {
+    if (err) {
+      console.error('Error fetching lecturer schedule:', err);
+      return res.status(500).json({ message: 'Error fetching schedule' });
+    }
+    res.json(results);
+  });
+});
+
 // Logout route
 app.post('/logout', (req, res) => {
   req.session.destroy((err) => {

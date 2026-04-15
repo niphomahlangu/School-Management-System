@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Class Schedule - School Management System</title>
+    <link rel="stylesheet" href="/shared/index.css">
+    <style>
+        .week-heading {
+            font-size: 1rem;
+            font-weight: 700;
+            color: #1e40af;
+            background: #eff6ff;
+            padding: 0.6rem 1rem;
+            border-radius: 6px;
+            margin-bottom: 0.5rem;
+            margin-top: 1.5rem;
+        }
+        .schedule-table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 680px;
+            margin-bottom: 0.5rem;
+        }
+        .schedule-table th {
+            padding: 0.8rem 1rem;
+            border-bottom: 2px solid #e5e7eb;
+            text-align: left;
+            color: #374151;
+            font-weight: 600;
+            background: #f8fafc;
+        }
+        .schedule-table td {
+            padding: 0.8rem 1rem;
+            border-bottom: 1px solid #f1f5f9;
+            vertical-align: top;
+            color: #374151;
+        }
+        .schedule-table tr:hover td {
+            background: #f8fafc;
+        }
+        .today-badge {
+            display: inline-block;
+            font-size: 0.7rem;
+            font-weight: 700;
+            background: #dcfce7;
+            color: #15803d;
+            border-radius: 999px;
+            padding: 0.15rem 0.5rem;
+            margin-left: 0.4rem;
+            vertical-align: middle;
+        }
+        .module-name { font-weight: 600; color: #111827; }
+        .module-code { font-size: 0.88rem; color: #6b7280; }
+        .filter-bar {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+        .filter-bar select,
+        .filter-bar input[type="text"] {
+            padding: 0.55rem 0.9rem;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-size: 0.95rem;
+            color: #374151;
+            background: #fff;
+        }
+        .pill {
+            display: inline-block;
+            padding: 0.25rem 0.65rem;
+            border-radius: 999px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+        #scheduleStatus {
+            padding: 1.5rem 0;
+            color: #6b7280;
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <button class="menu-toggle" id="menuToggle">
+            <span>☰</span>
+        </button>
+        <h1 class="header-title">Class Schedule</h1>
+        <div class="user-profile">
+            <button class="profile-button" id="profileButton">
+                <div class="profile-icon">L</div>
+                <span class="profile-name">Lecturer</span>
+                <span class="dropdown-arrow">▼</span>
+            </button>
+            <div class="dropdown-menu" id="dropdownMenu">
+                <a href="#profile">My Profile</a>
+                <a href="#settings">Settings</a>
+                <div class="divider"></div>
+                <button class="logout-button" id="logoutButton">Logout</button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Sidebar Navigation -->
+    <nav class="sidebar" id="sidebar">
+        <ul class="sidebar-nav">
+            <li><a href="index.html"><span class="nav-icon">📊</span> Dashboard</a></li>
+            <li><a href="#my-courses"><span class="nav-icon">📚</span> My Courses</a></li>
+            <li><a href="#students"><span class="nav-icon">👨‍🎓</span> Students</a></li>
+            <li><a href="#attendance"><span class="nav-icon">📝</span> Mark Attendance</a></li>
+            <li><a href="#grades"><span class="nav-icon">🎯</span> Manage Grades</a></li>
+            <li><a href="schedule.html" class="active"><span class="nav-icon">📅</span> Class Schedule</a></li>
+            <li><a href="#materials"><span class="nav-icon">📖</span> Course Materials</a></li>
+            <li><a href="#announcements"><span class="nav-icon">📢</span> Announcements</a></li>
+        </ul>
+    </nav>
+
+    <!-- Overlay for mobile -->
+    <div class="overlay" id="overlay"></div>
+
+    <!-- Main Content -->
+    <main class="main-content" id="mainContent">
+        <div class="content-card">
+            <!-- Page header -->
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:1rem; margin-bottom:1.5rem;">
+                <div>
+                    <h1 style="margin:0 0 0.25rem;">Class Schedule</h1>
+                    <p style="margin:0; color:#4b5563;">Your scheduled teaching sessions from the timetable.</p>
+                </div>
+                <div style="background:#eff6ff; color:#1d4ed8; padding:0.65rem 1.2rem; border-radius:999px; font-weight:600; white-space:nowrap;">
+                    <span id="totalCount">—</span> sessions total
+                </div>
+            </div>
+
+            <!-- Filters -->
+            <div class="filter-bar">
+                <select id="weekFilter">
+                    <option value="">All weeks</option>
+                </select>
+                <input type="text" id="searchFilter" placeholder="Search module or venue…" style="flex:1; min-width:180px;">
+            </div>
+
+            <!-- Content area -->
+            <div id="scheduleStatus">Loading class schedule…</div>
+            <div id="scheduleContent" style="overflow-x:auto;"></div>
+        </div>
+    </main>
+
+    <script src="/shared/main.js"></script>
+    <script src="/lecturer/schedule.js"></script>
+</body>
+</html>
