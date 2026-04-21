@@ -1,0 +1,11 @@
+# Dependencies
+node_modules/
+
+# Environment variables
+.env
+
+# SQL scripts (sensitive / setup only)
+scripts/
+
+# Generated credentials (sensitive)
+created_user_credentials.csv
