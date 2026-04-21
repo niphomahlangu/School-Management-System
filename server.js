@@ -216,6 +216,141 @@ app.get('/api/lecturer/schedule', noCache, hasRole('lecturer'), (req, res) => {
   });
 });
 
+// =========================
+// Lecturer Attendance API
+// =========================
+
+// GET attendance list for a specific session (must belong to this lecturer)
+app.get('/api/lecturer/attendance/:sessionId', noCache, hasRole('lecturer'), (req, res) => {
+  const sessionId = parseInt(req.params.sessionId, 10);
+  if (!Number.isInteger(sessionId) || sessionId <= 0) {
+    return res.status(400).json({ message: 'Invalid session ID' });
+  }
+
+  const query = `
+    SELECT
+      sa.id          AS attendanceId,
+      sa.studentId,
+      sa.attended,
+      sa.markedAt,
+      u.first_name,
+      u.last_name,
+      s.studentNumber,
+      DATE_FORMAT(ls.sessionDate, '%Y-%m-%d')  AS sessionDate,
+      TIME_FORMAT(ls.startTime,   '%H:%i')     AS startTime,
+      TIME_FORMAT(ls.endTime,     '%H:%i')     AS endTime,
+      COALESCE(ls.venue, '')                   AS venue,
+      m.moduleName,
+      m.moduleCode
+    FROM   my_database.session_attendance sa
+    JOIN   my_database.lecturer_sessions ls ON ls.sessionId  = sa.sessionId
+    JOIN   my_database.lecturers         l  ON l.lecturerId  = ls.lecturerId
+    JOIN   my_database.students          s  ON s.studentId   = sa.studentId
+    JOIN   my_database.users             u  ON u.id          = s.user_id
+    JOIN   my_database.modules           m  ON m.moduleId    = ls.moduleId
+    WHERE  sa.sessionId = ?
+      AND  l.user_id    = ?
+    ORDER BY u.last_name ASC, u.first_name ASC
+  `;
+
+  connection.query(query, [sessionId, req.session.userId], (err, rows) => {
+    if (err) {
+      console.error('Error fetching attendance:', err);
+      return res.status(500).json({ message: 'Error fetching attendance' });
+    }
+    if (!rows.length) {
+      return res.status(404).json({ message: 'Session not found or no students enrolled' });
+    }
+
+    const first = rows[0];
+    res.json({
+      session: {
+        sessionId,
+        sessionDate: first.sessionDate,
+        startTime:   first.startTime,
+        endTime:     first.endTime,
+        venue:       first.venue,
+        moduleName:  first.moduleName,
+        moduleCode:  first.moduleCode
+      },
+      students: rows.map(r => ({
+        attendanceId:  r.attendanceId,
+        studentId:     r.studentId,
+        studentNumber: r.studentNumber,
+        firstName:     r.first_name,
+        lastName:      r.last_name,
+        attended:      r.attended,
+        markedAt:      r.markedAt
+      }))
+    });
+  });
+});
+
+// POST save/update attendance for a session
+app.post('/api/lecturer/attendance/:sessionId', noCache, hasRole('lecturer'), (req, res) => {
+  const sessionId = parseInt(req.params.sessionId, 10);
+  if (!Number.isInteger(sessionId) || sessionId <= 0) {
+    return res.status(400).json({ message: 'Invalid session ID' });
+  }
+
+  const { attendedIds } = req.body;
+  if (!Array.isArray(attendedIds)) {
+    return res.status(400).json({ message: 'attendedIds must be an array' });
+  }
+
+  // All IDs must be positive integers
+  if (attendedIds.some(id => !Number.isInteger(id) || id <= 0)) {
+    return res.status(400).json({ message: 'attendedIds contains invalid values' });
+  }
+
+  // Verify session belongs to this lecturer
+  const verifyQuery = `
+    SELECT ls.sessionId
+    FROM   my_database.lecturer_sessions ls
+    JOIN   my_database.lecturers l ON l.lecturerId = ls.lecturerId
+    WHERE  ls.sessionId = ? AND l.user_id = ?
+  `;
+
+  connection.query(verifyQuery, [sessionId, req.session.userId], (err, rows) => {
+    if (err) {
+      console.error('Error verifying session:', err);
+      return res.status(500).json({ message: 'Internal server error' });
+    }
+    if (!rows.length) {
+      return res.status(403).json({ message: 'Session not found or access denied' });
+    }
+
+    // Step 1: mark everyone absent
+    connection.query(
+      `UPDATE my_database.session_attendance SET attended = 0, markedAt = NOW() WHERE sessionId = ?`,
+      [sessionId],
+      (err2) => {
+        if (err2) {
+          console.error('Error resetting attendance:', err2);
+          return res.status(500).json({ message: 'Error saving attendance' });
+        }
+
+        // Step 2: mark present students (skip if nobody selected)
+        if (!attendedIds.length) {
+          return res.json({ message: 'Attendance saved', present: 0 });
+        }
+
+        connection.query(
+          `UPDATE my_database.session_attendance SET attended = 1 WHERE sessionId = ? AND studentId IN (?)`,
+          [sessionId, attendedIds],
+          (err3, result) => {
+            if (err3) {
+              console.error('Error marking attendance:', err3);
+              return res.status(500).json({ message: 'Error saving attendance' });
+            }
+            res.json({ message: 'Attendance saved', present: result.affectedRows });
+          }
+        );
+      }
+    );
+  });
+});
+
 // Logout route
 app.post('/logout', (req, res) => {
   req.session.destroy((err) => {
