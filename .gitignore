@@ -9,3 +9,6 @@ scripts/
 
 # Generated credentials (sensitive)
 created_user_credentials.csv
+
+# Uploaded task files
+uploads/

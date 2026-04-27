@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Tasks - School Management System</title>
+    <link rel="stylesheet" href="/shared/index.css">
+    <style>
+        /* ── Page layout ─────────────────────────────────────────────── */
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+        .page-header h2 { margin: 0; font-size: 1.4rem; color: #1e3a8a; }
+
+        /* ── Upload / create form ─────────────────────────────────────── */
+        .task-form-card {
+            background: #fff;
+            border: 1px solid #e5e7eb;
+            border-radius: 10px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+        }
+        .task-form-card h3 {
+            margin: 0 0 1.2rem;
+            font-size: 1.1rem;
+            color: #1e3a8a;
+        }
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 1rem;
+        }
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.35rem;
+        }
+        .form-group.full-width { grid-column: 1 / -1; }
+        .form-group label {
+            font-size: 0.88rem;
+            font-weight: 600;
+            color: #374151;
+        }
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            padding: 0.6rem 0.85rem;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-size: 0.95rem;
+            color: #111827;
+            background: #fff;
+            font-family: inherit;
+        }
+        .form-group textarea { resize: vertical; min-height: 80px; }
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #2563eb;
+            box-shadow: 0 0 0 3px rgba(37,99,235,0.12);
+        }
+
+        /* file input */
+        .file-label {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            padding: 0.6rem 0.85rem;
+            border: 1px dashed #93c5fd;
+            border-radius: 6px;
+            background: #eff6ff;
+            cursor: pointer;
+            font-size: 0.9rem;
+            color: #1d4ed8;
+            transition: background 0.15s;
+        }
+        .file-label:hover { background: #dbeafe; }
+        #taskFile { display: none; }
+        #fileName {
+            font-size: 0.82rem;
+            color: #6b7280;
+            margin-top: 0.3rem;
+        }
+
+        /* form buttons */
+        .form-actions {
+            display: flex;
+            gap: 0.75rem;
+            margin-top: 1.2rem;
+            flex-wrap: wrap;
+        }
+        .btn-primary {
+            padding: 0.6rem 1.4rem;
+            background: #2563eb;
+            color: #fff;
+            border: none;
+            border-radius: 6px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+        .btn-primary:hover { background: #1d4ed8; }
+        .btn-primary:disabled { background: #93c5fd; cursor: not-allowed; }
+        .btn-secondary {
+            padding: 0.6rem 1.2rem;
+            background: #f3f4f6;
+            color: #374151;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-size: 0.95rem;
+            cursor: pointer;
+        }
+        .btn-secondary:hover { background: #e5e7eb; }
+
+        /* ── Feedback banner ──────────────────────────────────────────── */
+        #formFeedback {
+            display: none;
+            padding: 0.75rem 1rem;
+            border-radius: 6px;
+            font-size: 0.92rem;
+            margin-top: 1rem;
+        }
+        #formFeedback.success { background: #dcfce7; color: #15803d; border: 1px solid #86efac; }
+        #formFeedback.error   { background: #fee2e2; color: #b91c1c; border: 1px solid #fca5a5; }
+
+        /* ── Tasks list ───────────────────────────────────────────────── */
+        .tasks-section h3 {
+            font-size: 1.1rem;
+            color: #1e3a8a;
+            margin-bottom: 1rem;
+        }
+        .tasks-table-wrapper { overflow-x: auto; }
+        .tasks-table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 680px;
+        }
+        .tasks-table th {
+            padding: 0.75rem 1rem;
+            border-bottom: 2px solid #e5e7eb;
+            text-align: left;
+            font-weight: 600;
+            color: #374151;
+            background: #f8fafc;
+            font-size: 0.88rem;
+            white-space: nowrap;
+        }
+        .tasks-table td {
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid #f1f5f9;
+            color: #374151;
+            font-size: 0.92rem;
+            vertical-align: middle;
+        }
+        .tasks-table tr:hover td { background: #f8fafc; }
+        .badge-module {
+            display: inline-block;
+            padding: 0.2rem 0.55rem;
+            border-radius: 999px;
+            font-size: 0.78rem;
+            font-weight: 600;
+            background: #dbeafe;
+            color: #1d4ed8;
+        }
+        .btn-icon {
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 1rem;
+            padding: 0.25rem 0.4rem;
+            border-radius: 4px;
+            transition: background 0.15s;
+        }
+        .btn-icon.download { color: #2563eb; }
+        .btn-icon.download:hover { background: #eff6ff; }
+        .btn-icon.delete  { color: #dc2626; }
+        .btn-icon.delete:hover  { background: #fee2e2; }
+        .no-file { color: #9ca3af; font-size: 0.82rem; font-style: italic; }
+
+        /* ── Status / loading ─────────────────────────────────────────── */
+        #tasksStatus {
+            padding: 2rem 0;
+            text-align: center;
+            color: #6b7280;
+            font-size: 0.95rem;
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <button class="menu-toggle" id="menuToggle"><span>☰</span></button>
+        <h1 class="header-title">Manage Tasks</h1>
+        <div class="user-profile">
+            <button class="profile-button" id="profileButton">
+                <div class="profile-icon">L</div>
+                <span class="profile-name">Lecturer</span>
+                <span class="dropdown-arrow">▼</span>
+            </button>
+            <div class="dropdown-menu" id="dropdownMenu">
+                <a href="#profile">My Profile</a>
+                <a href="#settings">Settings</a>
+                <div class="divider"></div>
+                <button class="logout-button" id="logoutButton">Logout</button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Sidebar -->
+    <nav class="sidebar" id="sidebar">
+        <ul class="sidebar-nav">
+            <li><a href="/lecturer"><span class="nav-icon">📊</span> Dashboard</a></li>
+            <li><a href="#my-courses"><span class="nav-icon">📚</span> My Courses</a></li>
+            <li><a href="#students"><span class="nav-icon">👨‍🎓</span> Students</a></li>
+            <li><a href="attendance.html"><span class="nav-icon">📝</span> Mark Attendance</a></li>
+            <li><a href="#grades"><span class="nav-icon">🎯</span> Manage Grades</a></li>
+            <li><a href="schedule.html"><span class="nav-icon">📅</span> Class Schedule</a></li>
+            <li><a href="tasks.html" class="active"><span class="nav-icon">📋</span> Tasks</a></li>
+        </ul>
+    </nav>
+
+    <!-- Overlay for mobile -->
+    <div class="overlay" id="overlay"></div>
+
+    <!-- Main Content -->
+    <main class="main-content" id="mainContent">
+        <div class="content-card">
+            <div class="page-header">
+                <h2>📋 Task Management</h2>
+            </div>
+
+            <!-- Create Task Form -->
+            <div class="task-form-card">
+                <h3>Create New Task</h3>
+                <form id="taskForm" novalidate>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="taskTitle">Task Title <span style="color:#dc2626">*</span></label>
+                            <input type="text" id="taskTitle" name="taskTitle" placeholder="e.g. Assignment 1: Data Structures" maxlength="200" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="moduleId">Module <span style="color:#dc2626">*</span></label>
+                            <select id="moduleId" name="moduleId" required>
+                                <option value="">— Select module —</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="dueDate">Due Date <span style="color:#dc2626">*</span></label>
+                            <input type="date" id="dueDate" name="dueDate" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Task File <span style="color:#6b7280;font-weight:400">(optional — PDF, Word, PPTX, TXT, JPG/PNG, max 10 MB)</span></label>
+                            <label class="file-label" for="taskFile">
+                                <span>📎</span> Choose file…
+                            </label>
+                            <input type="file" id="taskFile" name="taskFile"
+                                accept=".pdf,.doc,.docx,.ppt,.pptx,.txt,.jpg,.jpeg,.png">
+                            <span id="fileName">No file chosen</span>
+                        </div>
+                        <div class="form-group full-width">
+                            <label for="taskDescription">Description</label>
+                            <textarea id="taskDescription" name="taskDescription"
+                                placeholder="Describe the task requirements…" maxlength="2000"></textarea>
+                        </div>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="submit" class="btn-primary" id="submitBtn">Upload Task</button>
+                        <button type="button" class="btn-secondary" id="resetBtn">Clear</button>
+                    </div>
+                    <div id="formFeedback"></div>
+                </form>
+            </div>
+
+            <!-- Tasks List -->
+            <div class="tasks-section">
+                <h3>Your Tasks</h3>
+                <div id="tasksStatus">Loading tasks…</div>
+                <div class="tasks-table-wrapper" id="tasksTableWrapper" style="display:none">
+                    <table class="tasks-table">
+                        <thead>
+                            <tr>
+                                <th>Title</th>
+                                <th>Module</th>
+                                <th>Due Date</th>
+                                <th>File</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tasksBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="/shared/main.js"></script>
+    <script src="tasks.js"></script>
+</body>
+</html>

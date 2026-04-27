@@ -5,6 +5,7 @@ const session = require('express-session');
 require('dotenv').config();
 const path = require('path');
 const fs = require('fs');
+const multer = require('multer');
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -49,6 +50,42 @@ app.use('/admin', express.static(path.join(__dirname, 'admin')));
 app.use('/student', express.static(path.join(__dirname, 'student')));
 app.use('/lecturer', express.static(path.join(__dirname, 'lecturer')));
 app.use('/shared', express.static(path.join(__dirname, 'shared')));
+
+// Serve uploaded task files (authenticated access only - handled via API route)
+const UPLOADS_DIR = path.join(__dirname, 'uploads', 'tasks');
+if (!fs.existsSync(UPLOADS_DIR)) {
+  fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+}
+
+// Multer storage config for task files
+const taskStorage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, UPLOADS_DIR),
+  filename: (req, file, cb) => {
+    const safeName = file.originalname.replace(/[^a-zA-Z0-9._-]/g, '_');
+    cb(null, `${Date.now()}-${safeName}`);
+  }
+});
+const ALLOWED_TASK_MIME = new Set([
+  'application/pdf',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.ms-powerpoint',
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+  'text/plain',
+  'image/jpeg',
+  'image/png'
+]);
+const uploadTaskFile = multer({
+  storage: taskStorage,
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10 MB
+  fileFilter: (req, file, cb) => {
+    if (ALLOWED_TASK_MIME.has(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Unsupported file type. Allowed: PDF, Word, PowerPoint, plain text, JPEG, PNG.'));
+    }
+  }
+});
 
 // Middleware to check if user is authenticated
 function isAuthenticated(req, res, next) {
@@ -348,6 +385,181 @@ app.post('/api/lecturer/attendance/:sessionId', noCache, hasRole('lecturer'), (r
         );
       }
     );
+  });
+});
+
+// =========================
+// Lecturer Tasks API
+// =========================
+
+// GET all tasks created by this lecturer
+app.get('/api/lecturer/tasks', noCache, hasRole('lecturer'), (req, res) => {
+  const query = `
+    SELECT
+      t.taskId,
+      t.taskTitle,
+      t.taskDescription,
+      DATE_FORMAT(t.dueDate, '%Y-%m-%d') AS dueDate,
+      t.moduleId,
+      COALESCE(m.moduleName, '') AS moduleName,
+      COALESCE(m.moduleCode, '') AS moduleCode,
+      t.filePath
+    FROM   my_database.tasks t
+    JOIN   my_database.lecturers l ON l.lecturerId = t.lecturerId
+    LEFT JOIN my_database.modules m ON m.moduleId = t.moduleId
+    WHERE  l.user_id = ?
+    ORDER BY t.dueDate DESC, t.taskId DESC
+  `;
+  connection.query(query, [req.session.userId], (err, rows) => {
+    if (err) {
+      console.error('Error fetching tasks:', err);
+      return res.status(500).json({ message: 'Error fetching tasks' });
+    }
+    res.json(rows);
+  });
+});
+
+// GET modules assigned to the logged-in lecturer (for the task form dropdown)
+app.get('/api/lecturer/modules', noCache, hasRole('lecturer'), (req, res) => {
+  const query = `
+    SELECT DISTINCT m.moduleId, m.moduleCode, m.moduleName
+    FROM   my_database.lecturer_sessions ls
+    JOIN   my_database.lecturers l ON l.lecturerId = ls.lecturerId
+    JOIN   my_database.modules   m ON m.moduleId   = ls.moduleId
+    WHERE  l.user_id = ?
+    ORDER BY m.moduleName ASC
+  `;
+  connection.query(query, [req.session.userId], (err, rows) => {
+    if (err) {
+      console.error('Error fetching lecturer modules:', err);
+      return res.status(500).json({ message: 'Error fetching modules' });
+    }
+    res.json(rows);
+  });
+});
+
+// POST create a new task (with optional file upload)
+app.post('/api/lecturer/tasks', noCache, hasRole('lecturer'), (req, res) => {
+  uploadTaskFile.single('taskFile')(req, res, (uploadErr) => {
+    if (uploadErr) {
+      return res.status(400).json({ message: uploadErr.message });
+    }
+
+    const { taskTitle, taskDescription, dueDate, moduleId } = req.body;
+
+    if (!taskTitle || !taskTitle.trim()) {
+      if (req.file) fs.unlinkSync(req.file.path);
+      return res.status(400).json({ message: 'Task title is required' });
+    }
+    if (!dueDate || !/^\d{4}-\d{2}-\d{2}$/.test(dueDate)) {
+      if (req.file) fs.unlinkSync(req.file.path);
+      return res.status(400).json({ message: 'A valid due date is required' });
+    }
+    const parsedModuleId = parseInt(moduleId, 10);
+    if (!Number.isInteger(parsedModuleId) || parsedModuleId <= 0) {
+      if (req.file) fs.unlinkSync(req.file.path);
+      return res.status(400).json({ message: 'A valid module is required' });
+    }
+
+    const filePath = req.file
+      ? path.join('uploads', 'tasks', req.file.filename).replace(/\\/g, '/')
+      : null;
+
+    // Resolve lecturerId from session user
+    connection.query(
+      'SELECT lecturerId FROM my_database.lecturers WHERE user_id = ?',
+      [req.session.userId],
+      (err, rows) => {
+        if (err || !rows.length) {
+          if (req.file) fs.unlinkSync(req.file.path);
+          return res.status(500).json({ message: 'Could not resolve lecturer record' });
+        }
+        const lecturerId = rows[0].lecturerId;
+
+        const insertQuery = `
+          INSERT INTO my_database.tasks (taskTitle, taskDescription, dueDate, moduleId, lecturerId, filePath)
+          VALUES (?, ?, ?, ?, ?, ?)
+        `;
+        connection.query(
+          insertQuery,
+          [taskTitle.trim(), taskDescription ? taskDescription.trim() : null, dueDate, parsedModuleId, lecturerId, filePath],
+          (err2, result) => {
+            if (err2) {
+              console.error('Error inserting task:', err2);
+              if (req.file) fs.unlinkSync(req.file.path);
+              return res.status(500).json({ message: 'Error creating task' });
+            }
+            res.status(201).json({ message: 'Task created', taskId: result.insertId, filePath });
+          }
+        );
+      }
+    );
+  });
+});
+
+// DELETE a task (lecturer can only delete their own tasks)
+app.delete('/api/lecturer/tasks/:taskId', noCache, hasRole('lecturer'), (req, res) => {
+  const taskId = parseInt(req.params.taskId, 10);
+  if (!Number.isInteger(taskId) || taskId <= 0) {
+    return res.status(400).json({ message: 'Invalid task ID' });
+  }
+
+  // Verify ownership before deleting
+  const ownerQuery = `
+    SELECT t.taskId, t.filePath
+    FROM   my_database.tasks t
+    JOIN   my_database.lecturers l ON l.lecturerId = t.lecturerId
+    WHERE  t.taskId = ? AND l.user_id = ?
+  `;
+  connection.query(ownerQuery, [taskId, req.session.userId], (err, rows) => {
+    if (err) {
+      console.error('Error verifying task ownership:', err);
+      return res.status(500).json({ message: 'Internal server error' });
+    }
+    if (!rows.length) {
+      return res.status(404).json({ message: 'Task not found or access denied' });
+    }
+
+    const existingFilePath = rows[0].filePath;
+
+    connection.query('DELETE FROM my_database.tasks WHERE taskId = ?', [taskId], (err2) => {
+      if (err2) {
+        console.error('Error deleting task:', err2);
+        return res.status(500).json({ message: 'Error deleting task' });
+      }
+      // Remove the file from disk if it exists
+      if (existingFilePath) {
+        const absPath = path.join(__dirname, existingFilePath);
+        if (fs.existsSync(absPath)) fs.unlinkSync(absPath);
+      }
+      res.json({ message: 'Task deleted' });
+    });
+  });
+});
+
+// GET download/view an uploaded task file (lecturer only, must own the task)
+app.get('/api/lecturer/tasks/:taskId/file', noCache, hasRole('lecturer'), (req, res) => {
+  const taskId = parseInt(req.params.taskId, 10);
+  if (!Number.isInteger(taskId) || taskId <= 0) {
+    return res.status(400).json({ message: 'Invalid task ID' });
+  }
+
+  const query = `
+    SELECT t.filePath
+    FROM   my_database.tasks t
+    JOIN   my_database.lecturers l ON l.lecturerId = t.lecturerId
+    WHERE  t.taskId = ? AND l.user_id = ?
+  `;
+  connection.query(query, [taskId, req.session.userId], (err, rows) => {
+    if (err) return res.status(500).json({ message: 'Internal server error' });
+    if (!rows.length || !rows[0].filePath) {
+      return res.status(404).json({ message: 'File not found' });
+    }
+    const absPath = path.join(__dirname, rows[0].filePath);
+    if (!fs.existsSync(absPath)) {
+      return res.status(404).json({ message: 'File not found on server' });
+    }
+    res.download(absPath);
   });
 });
 
