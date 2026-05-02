@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tasks - School Management System</title>
+    <link rel="stylesheet" href="/shared/index.css">
+    <style>
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+        .page-header h2 { margin: 0; font-size: 1.4rem; color: #1e3a8a; }
+
+        .tasks-table-wrapper { overflow-x: auto; }
+        .tasks-table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 600px;
+        }
+        .tasks-table th {
+            padding: 0.75rem 1rem;
+            border-bottom: 2px solid #e5e7eb;
+            text-align: left;
+            font-weight: 600;
+            color: #374151;
+            background: #f8fafc;
+            font-size: 0.88rem;
+            white-space: nowrap;
+        }
+        .tasks-table td {
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid #f1f5f9;
+            color: #374151;
+            font-size: 0.92rem;
+            vertical-align: middle;
+        }
+        .tasks-table tr:hover td { background: #f8fafc; }
+        .badge-module {
+            display: inline-block;
+            padding: 0.2rem 0.55rem;
+            border-radius: 999px;
+            font-size: 0.78rem;
+            font-weight: 600;
+            background: #dbeafe;
+            color: #1d4ed8;
+        }
+        .badge-overdue {
+            display: inline-block;
+            padding: 0.2rem 0.55rem;
+            border-radius: 999px;
+            font-size: 0.78rem;
+            font-weight: 600;
+            background: #fee2e2;
+            color: #b91c1c;
+            margin-left: 0.4rem;
+        }
+        .btn-icon {
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 0.92rem;
+            padding: 0.3rem 0.7rem;
+            border-radius: 6px;
+            font-weight: 600;
+            transition: background 0.15s;
+            color: #2563eb;
+            border: 1px solid #bfdbfe;
+            background: #eff6ff;
+        }
+        .btn-icon:hover { background: #dbeafe; }
+        .no-file { color: #9ca3af; font-size: 0.82rem; font-style: italic; }
+
+        #tasksStatus {
+            padding: 2rem 0;
+            text-align: center;
+            color: #6b7280;
+            font-size: 0.95rem;
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <button class="menu-toggle" id="menuToggle"><span>☰</span></button>
+        <h1 class="header-title">Tasks</h1>
+        <div class="user-profile">
+            <button class="profile-button" id="profileButton">
+                <div class="profile-icon">S</div>
+                <span class="profile-name">Student</span>
+                <span class="dropdown-arrow">▼</span>
+            </button>
+            <div class="dropdown-menu" id="dropdownMenu">
+                <a href="#profile">My Profile</a>
+                <a href="#settings">Settings</a>
+                <div class="divider"></div>
+                <button class="logout-button" id="logoutButton">Logout</button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Sidebar -->
+    <nav class="sidebar" id="sidebar">
+        <ul class="sidebar-nav">
+            <li><a href="/student"><span class="nav-icon">📊</span> Dashboard</a></li>
+            <li><a href="#my-courses"><span class="nav-icon">📚</span> My Courses</a></li>
+            <li><a href="#grades"><span class="nav-icon">🎯</span> Grades</a></li>
+            <li><a href="#schedule"><span class="nav-icon">📅</span> Class Schedule</a></li>
+            <li><a href="#attendance"><span class="nav-icon">📝</span> Attendance</a></li>
+            <li><a href="#assignments"><span class="nav-icon">📄</span> Assignments</a></li>
+            <li><a href="tasks.html" class="active"><span class="nav-icon">📋</span> Tasks</a></li>
+            <li><a href="#materials"><span class="nav-icon">📖</span> Course Materials</a></li>
+            <li><a href="#transcript"><span class="nav-icon">📜</span> Transcript</a></li>
+        </ul>
+    </nav>
+
+    <!-- Overlay for mobile -->
+    <div class="overlay" id="overlay"></div>
+
+    <!-- Main Content -->
+    <main class="main-content" id="mainContent">
+        <div class="content-card">
+            <div class="page-header">
+                <h2>📋 Tasks</h2>
+            </div>
+
+            <div id="tasksStatus">Loading tasks…</div>
+            <div class="tasks-table-wrapper" id="tasksTableWrapper" style="display:none">
+                <table class="tasks-table">
+                    <thead>
+                        <tr>
+                            <th>Title</th>
+                            <th>Module</th>
+                            <th>Due Date</th>
+                            <th>File</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tasksBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <script src="/shared/main.js"></script>
+    <script src="tasks.js"></script>
+</body>
+</html>

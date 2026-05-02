@@ -582,6 +582,69 @@ app.get('/student', noCache, hasRole('student'), (req, res) => {
   res.sendFile(path.join(__dirname, 'student', 'index.html'));
 });
 
+app.get('/student/tasks', noCache, hasRole('student'), (req, res) => {
+  res.sendFile(path.join(__dirname, 'student', 'tasks.html'));
+});
+
+// GET tasks for the modules the logged-in student is enrolled in
+app.get('/api/student/tasks', noCache, hasRole('student'), (req, res) => {
+  const query = `
+    SELECT taskId, taskTitle, taskDescription, dueDate, moduleName, moduleCode, filePath
+    FROM (
+      SELECT DISTINCT
+        t.taskId,
+        t.taskTitle,
+        t.taskDescription,
+        DATE_FORMAT(t.dueDate, '%Y-%m-%d') AS dueDate,
+        COALESCE(m.moduleName, '') AS moduleName,
+        COALESCE(m.moduleCode, '') AS moduleCode,
+        t.filePath
+      FROM   my_database.tasks t
+      JOIN   my_database.modules         m  ON m.moduleId  = t.moduleId
+      JOIN   my_database.course_modules  cm ON cm.moduleId = t.moduleId
+      JOIN   my_database.student_courses sc ON sc.courseId = cm.courseId
+      JOIN   my_database.students        s  ON s.studentId = sc.studentId
+      WHERE  s.user_id = ?
+    ) AS sub
+    ORDER BY dueDate DESC, taskId DESC
+  `;
+  connection.query(query, [req.session.userId], (err, rows) => {
+    if (err) {
+      console.error('Error fetching student tasks:', err);
+      return res.status(500).json({ message: 'Error fetching tasks' });
+    }
+    res.json(rows);
+  });
+});
+
+// GET download a task file (student must be enrolled in the relevant course)
+app.get('/api/student/tasks/:taskId/file', noCache, hasRole('student'), (req, res) => {
+  const taskId = parseInt(req.params.taskId, 10);
+  if (!Number.isInteger(taskId) || taskId <= 0) {
+    return res.status(400).json({ message: 'Invalid task ID' });
+  }
+
+  const query = `
+    SELECT DISTINCT t.filePath
+    FROM   my_database.tasks t
+    JOIN   my_database.course_modules  cm ON cm.moduleId = t.moduleId
+    JOIN   my_database.student_courses sc ON sc.courseId = cm.courseId
+    JOIN   my_database.students        s  ON s.studentId = sc.studentId
+    WHERE  t.taskId = ? AND s.user_id = ?
+  `;
+  connection.query(query, [taskId, req.session.userId], (err, rows) => {
+    if (err) return res.status(500).json({ message: 'Internal server error' });
+    if (!rows.length || !rows[0].filePath) {
+      return res.status(404).json({ message: 'File not found' });
+    }
+    const absPath = path.join(__dirname, rows[0].filePath);
+    if (!fs.existsSync(absPath)) {
+      return res.status(404).json({ message: 'File not found on server' });
+    }
+    res.download(absPath);
+  });
+});
+
 app.get('/lecturer', noCache, hasRole('lecturer'), (req, res) => {
   res.sendFile(path.join(__dirname, 'lecturer', 'index.html'));
 });
