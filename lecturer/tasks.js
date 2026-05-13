@@ -99,6 +99,11 @@ async function loadTasks() {
                 <td>${fmtDate(t.dueDate)}</td>
                 <td>${fileCell}</td>
                 <td>
+                    <button class="btn-icon view-subs" title="View submissions"
+                        data-task-id="${t.taskId}"
+                        data-task-title="${esc(t.taskTitle)}">📥 Submissions</button>
+                </td>
+                <td>
                     <button class="btn-icon delete" title="Delete task" data-task-id="${t.taskId}">🗑 Delete</button>
                 </td>
             `;
@@ -180,6 +185,127 @@ resetBtn.addEventListener('click', () => {
     formFeedback.style.display = 'none';
 });
 
+// ─── Submissions panel ────────────────────────────────────────────────────────
+
+const subsPanel        = document.getElementById('subsPanel');
+const subsPanelTitle   = document.getElementById('subsPanelTitle');
+const subsStatus       = document.getElementById('subsStatus');
+const subsTableWrapper = document.getElementById('subsTableWrapper');
+const subsBody         = document.getElementById('subsBody');
+const closeSubsPanel   = document.getElementById('closeSubsPanel');
+
+closeSubsPanel.addEventListener('click', () => {
+    subsPanel.classList.remove('open');
+});
+
+async function loadSubmissions(taskId, taskTitle) {
+    subsPanelTitle.textContent    = `Submissions — ${taskTitle}`;
+    subsStatus.textContent        = 'Loading submissions…';
+    subsStatus.style.display      = 'block';
+    subsTableWrapper.style.display = 'none';
+    subsBody.innerHTML            = '';
+    subsPanel.classList.add('open');
+    subsPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+    try {
+        const res = await fetch(`/api/lecturer/tasks/${taskId}/submissions`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const subs = await res.json();
+
+        if (!subs.length) {
+            subsStatus.textContent = 'No submissions yet for this task.';
+            return;
+        }
+
+        subsStatus.style.display       = 'none';
+        subsTableWrapper.style.display = 'block';
+
+        subs.forEach(s => {
+            const tr = document.createElement('tr');
+
+            const submittedAt = s.submittedAt
+                ? new Date(s.submittedAt).toLocaleString('en-ZA', {
+                    day: 'numeric', month: 'short', year: 'numeric',
+                    hour: '2-digit', minute: '2-digit'
+                  })
+                : '—';
+
+            const currentGrade = s.result !== null && s.result !== undefined ? esc(s.result) : '';
+
+            tr.innerHTML = `
+                <td>${esc(s.last_name)}, ${esc(s.first_name)}</td>
+                <td>${esc(s.studentNumber)}</td>
+                <td>${submittedAt}</td>
+                <td>
+                    <button class="btn-icon download sub-download"
+                        data-sub-id="${s.submissionId}"
+                        title="Download submission">⬇ Download</button>
+                </td>
+                <td>
+                    <div class="grade-form">
+                        <input class="grade-input" type="text"
+                            placeholder="e.g. 85% or A"
+                            maxlength="50"
+                            value="${currentGrade}"
+                            data-sub-id="${s.submissionId}">
+                        <button class="btn-save-grade"
+                            data-sub-id="${s.submissionId}">Save</button>
+                        <span class="grade-saved" id="saved-${s.submissionId}">✓ Saved</span>
+                    </div>
+                </td>
+            `;
+            subsBody.appendChild(tr);
+        });
+
+    } catch (err) {
+        console.error('Failed to load submissions:', err);
+        subsStatus.textContent = 'Failed to load submissions. Please try again.';
+    }
+}
+
+// ─── Submissions panel event delegation ──────────────────────────────────────
+
+subsBody.addEventListener('click', async (e) => {
+    const btn = e.target.closest('button');
+    if (!btn) return;
+    const subId = btn.dataset.subId;
+
+    if (btn.classList.contains('sub-download')) {
+        window.location.href = `/api/lecturer/submissions/${subId}/file`;
+        return;
+    }
+
+    if (btn.classList.contains('btn-save-grade')) {
+        const row    = btn.closest('tr');
+        const input  = row.querySelector(`.grade-input[data-sub-id="${subId}"]`);
+        const saved  = document.getElementById(`saved-${subId}`);
+        const grade  = input.value.trim();
+
+        if (!grade) { alert('Please enter a grade or result before saving.'); return; }
+
+        btn.disabled    = true;
+        btn.textContent = 'Saving…';
+
+        try {
+            const res  = await fetch(`/api/lecturer/submissions/${subId}/grade`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ result: grade })
+            });
+            const data = await res.json();
+            if (!res.ok) { alert(data.message || 'Could not save grade.'); return; }
+            saved.style.display = 'inline';
+            setTimeout(() => { saved.style.display = 'none'; }, 3000);
+        } catch (err) {
+            console.error('Grade save error:', err);
+            alert('An error occurred while saving the grade.');
+        } finally {
+            btn.disabled    = false;
+            btn.textContent = 'Save';
+        }
+    }
+});
+
 // ─── Delete / download via event delegation ───────────────────────────────────
 
 tasksBody.addEventListener('click', async (e) => {
@@ -195,6 +321,7 @@ tasksBody.addEventListener('click', async (e) => {
             const res  = await fetch(`/api/lecturer/tasks/${taskId}`, { method: 'DELETE' });
             const data = await res.json();
             if (!res.ok) { alert(data.message || 'Delete failed.'); return; }
+            subsPanel.classList.remove('open');
             await loadTasks();
         } catch (err) {
             console.error('Delete error:', err);
@@ -206,6 +333,10 @@ tasksBody.addEventListener('click', async (e) => {
 
     if (btn.classList.contains('download')) {
         window.location.href = `/api/lecturer/tasks/${taskId}/file`;
+    }
+
+    if (btn.classList.contains('view-subs')) {
+        loadSubmissions(taskId, btn.dataset.taskTitle);
     }
 });
 

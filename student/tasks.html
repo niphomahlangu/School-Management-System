@@ -75,6 +75,113 @@
         .btn-icon:hover { background: #dbeafe; }
         .no-file { color: #9ca3af; font-size: 0.82rem; font-style: italic; }
 
+        /* Submission status badges */
+        .badge-submitted {
+            display: inline-block;
+            padding: 0.2rem 0.55rem;
+            border-radius: 999px;
+            font-size: 0.78rem;
+            font-weight: 600;
+            background: #dcfce7;
+            color: #15803d;
+        }
+        .badge-graded {
+            display: inline-block;
+            padding: 0.2rem 0.55rem;
+            border-radius: 999px;
+            font-size: 0.78rem;
+            font-weight: 600;
+            background: #fef9c3;
+            color: #854d0e;
+        }
+        .badge-pending {
+            display: inline-block;
+            padding: 0.2rem 0.55rem;
+            border-radius: 999px;
+            font-size: 0.78rem;
+            font-weight: 600;
+            background: #f3f4f6;
+            color: #6b7280;
+        }
+        .btn-submit {
+            padding: 0.3rem 0.8rem;
+            background: #2563eb;
+            color: #fff;
+            border: none;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+        .btn-submit:hover { background: #1d4ed8; }
+        .btn-resubmit {
+            padding: 0.3rem 0.8rem;
+            background: #f3f4f6;
+            color: #374151;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+        .btn-resubmit:hover { background: #e5e7eb; }
+
+        /* Submit modal */
+        .modal-backdrop {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.45);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-backdrop.open { display: flex; }
+        .modal {
+            background: #fff;
+            border-radius: 10px;
+            padding: 1.75rem;
+            width: min(440px, 92vw);
+            box-shadow: 0 8px 30px rgba(0,0,0,0.18);
+        }
+        .modal h3 {
+            margin: 0 0 1.1rem;
+            font-size: 1.1rem;
+            color: #1e3a8a;
+        }
+        .modal-file-label {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            padding: 0.65rem 0.9rem;
+            border: 1px dashed #93c5fd;
+            border-radius: 6px;
+            background: #eff6ff;
+            cursor: pointer;
+            font-size: 0.92rem;
+            color: #1d4ed8;
+            transition: background 0.15s;
+            margin-bottom: 0.3rem;
+        }
+        .modal-file-label:hover { background: #dbeafe; }
+        #submitFileInput { display: none; }
+        #submitFileName { font-size: 0.82rem; color: #6b7280; margin-bottom: 1rem; }
+        .modal-actions {
+            display: flex;
+            gap: 0.75rem;
+            margin-top: 1rem;
+        }
+        #modalFeedback {
+            display: none;
+            padding: 0.65rem 0.9rem;
+            border-radius: 6px;
+            font-size: 0.88rem;
+            margin-top: 0.75rem;
+        }
+        #modalFeedback.success { background: #dcfce7; color: #15803d; border: 1px solid #86efac; }
+        #modalFeedback.error   { background: #fee2e2; color: #b91c1c; border: 1px solid #fca5a5; }
+
         #tasksStatus {
             padding: 2rem 0;
             text-align: center;
@@ -136,7 +243,10 @@
                             <th>Title</th>
                             <th>Module</th>
                             <th>Due Date</th>
-                            <th>File</th>
+                            <th>Task File</th>
+                            <th>Status</th>
+                            <th>Grade</th>
+                            <th>Action</th>
                         </tr>
                     </thead>
                     <tbody id="tasksBody"></tbody>
@@ -144,6 +254,24 @@
             </div>
         </div>
     </main>
+
+    <!-- Submit Modal -->
+    <div class="modal-backdrop" id="submitModalBackdrop">
+        <div class="modal">
+            <h3 id="submitModalTitle">Submit Task</h3>
+            <label class="modal-file-label" for="submitFileInput">
+                <span>📎</span> Choose file to submit…
+            </label>
+            <input type="file" id="submitFileInput"
+                accept=".pdf,.doc,.docx,.ppt,.pptx,.txt,.jpg,.jpeg,.png">
+            <div id="submitFileName">No file chosen</div>
+            <div class="modal-actions">
+                <button class="btn-submit" id="confirmSubmitBtn">Submit</button>
+                <button class="btn-resubmit" id="cancelSubmitBtn">Cancel</button>
+            </div>
+            <div id="modalFeedback"></div>
+        </div>
+    </div>
 
     <script src="/shared/main.js"></script>
     <script src="tasks.js"></script>

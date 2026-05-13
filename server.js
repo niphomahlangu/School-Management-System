@@ -87,6 +87,30 @@ const uploadTaskFile = multer({
   }
 });
 
+// Multer storage for student submission files
+const SUBMISSIONS_DIR = path.join(__dirname, 'uploads', 'submissions');
+if (!fs.existsSync(SUBMISSIONS_DIR)) {
+  fs.mkdirSync(SUBMISSIONS_DIR, { recursive: true });
+}
+const submissionStorage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, SUBMISSIONS_DIR),
+  filename: (req, file, cb) => {
+    const safeName = file.originalname.replace(/[^a-zA-Z0-9._-]/g, '_');
+    cb(null, `${Date.now()}-${safeName}`);
+  }
+});
+const uploadSubmissionFile = multer({
+  storage: submissionStorage,
+  limits: { fileSize: 20 * 1024 * 1024 }, // 20 MB
+  fileFilter: (req, file, cb) => {
+    if (ALLOWED_TASK_MIME.has(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Unsupported file type. Allowed: PDF, Word, PowerPoint, plain text, JPEG, PNG.'));
+    }
+  }
+});
+
 // Middleware to check if user is authenticated
 function isAuthenticated(req, res, next) {
   if (req.session && req.session.userId) {
@@ -563,6 +587,112 @@ app.get('/api/lecturer/tasks/:taskId/file', noCache, hasRole('lecturer'), (req, 
   });
 });
 
+// =========================
+// Lecturer Submissions API
+// =========================
+
+// GET all submissions for a specific task (lecturer must own the task)
+app.get('/api/lecturer/tasks/:taskId/submissions', noCache, hasRole('lecturer'), (req, res) => {
+  const taskId = parseInt(req.params.taskId, 10);
+  if (!Number.isInteger(taskId) || taskId <= 0) {
+    return res.status(400).json({ message: 'Invalid task ID' });
+  }
+
+  // Verify task belongs to this lecturer
+  const ownerCheck = `
+    SELECT t.taskId FROM my_database.tasks t
+    JOIN   my_database.lecturers l ON l.lecturerId = t.lecturerId
+    WHERE  t.taskId = ? AND l.user_id = ?
+  `;
+  connection.query(ownerCheck, [taskId, req.session.userId], (err, rows) => {
+    if (err) return res.status(500).json({ message: 'Internal server error' });
+    if (!rows.length) return res.status(403).json({ message: 'Task not found or access denied' });
+
+    const subsQuery = `
+      SELECT
+        ts.submissionId,
+        ts.filePath,
+        ts.submittedAt,
+        ts.result,
+        s.studentId,
+        s.studentNumber,
+        u.first_name,
+        u.last_name
+      FROM   my_database.task_submissions ts
+      JOIN   my_database.students s ON s.studentId = ts.studentId
+      JOIN   my_database.users    u ON u.id         = s.user_id
+      WHERE  ts.taskId = ?
+      ORDER BY u.last_name ASC, u.first_name ASC
+    `;
+    connection.query(subsQuery, [taskId], (err2, subs) => {
+      if (err2) return res.status(500).json({ message: 'Error fetching submissions' });
+      res.json(subs);
+    });
+  });
+});
+
+// GET download a student's submission file (lecturer must own the task)
+app.get('/api/lecturer/submissions/:submissionId/file', noCache, hasRole('lecturer'), (req, res) => {
+  const submissionId = parseInt(req.params.submissionId, 10);
+  if (!Number.isInteger(submissionId) || submissionId <= 0) {
+    return res.status(400).json({ message: 'Invalid submission ID' });
+  }
+
+  const query = `
+    SELECT ts.filePath
+    FROM   my_database.task_submissions ts
+    JOIN   my_database.tasks      t  ON t.taskId     = ts.taskId
+    JOIN   my_database.lecturers  l  ON l.lecturerId = t.lecturerId
+    WHERE  ts.submissionId = ? AND l.user_id = ?
+  `;
+  connection.query(query, [submissionId, req.session.userId], (err, rows) => {
+    if (err) return res.status(500).json({ message: 'Internal server error' });
+    if (!rows.length || !rows[0].filePath) return res.status(404).json({ message: 'File not found' });
+    const absPath = path.join(__dirname, rows[0].filePath);
+    if (!fs.existsSync(absPath)) return res.status(404).json({ message: 'File not found on server' });
+    res.download(absPath);
+  });
+});
+
+// PUT grade/mark a submission (lecturer must own the parent task)
+app.put('/api/lecturer/submissions/:submissionId/grade', noCache, hasRole('lecturer'), (req, res) => {
+  const submissionId = parseInt(req.params.submissionId, 10);
+  if (!Number.isInteger(submissionId) || submissionId <= 0) {
+    return res.status(400).json({ message: 'Invalid submission ID' });
+  }
+
+  const { result } = req.body;
+  if (result === undefined || result === null || String(result).trim() === '') {
+    return res.status(400).json({ message: 'A grade/result value is required' });
+  }
+  const resultStr = String(result).trim();
+  if (resultStr.length > 50) {
+    return res.status(400).json({ message: 'Grade value is too long (max 50 characters)' });
+  }
+
+  // Verify lecturer owns the task linked to this submission
+  const verifyQuery = `
+    SELECT ts.submissionId
+    FROM   my_database.task_submissions ts
+    JOIN   my_database.tasks     t ON t.taskId     = ts.taskId
+    JOIN   my_database.lecturers l ON l.lecturerId = t.lecturerId
+    WHERE  ts.submissionId = ? AND l.user_id = ?
+  `;
+  connection.query(verifyQuery, [submissionId, req.session.userId], (err, rows) => {
+    if (err) return res.status(500).json({ message: 'Internal server error' });
+    if (!rows.length) return res.status(403).json({ message: 'Submission not found or access denied' });
+
+    connection.query(
+      'UPDATE my_database.task_submissions SET result = ? WHERE submissionId = ?',
+      [resultStr, submissionId],
+      (err2) => {
+        if (err2) return res.status(500).json({ message: 'Error saving grade' });
+        res.json({ message: 'Grade saved' });
+      }
+    );
+  });
+});
+
 // Logout route
 app.post('/logout', (req, res) => {
   req.session.destroy((err) => {
@@ -586,27 +716,30 @@ app.get('/student/tasks', noCache, hasRole('student'), (req, res) => {
   res.sendFile(path.join(__dirname, 'student', 'tasks.html'));
 });
 
-// GET tasks for the modules the logged-in student is enrolled in
+// GET tasks for the modules the logged-in student is enrolled in (includes submission status)
 app.get('/api/student/tasks', noCache, hasRole('student'), (req, res) => {
   const query = `
-    SELECT taskId, taskTitle, taskDescription, dueDate, moduleName, moduleCode, filePath
-    FROM (
-      SELECT DISTINCT
-        t.taskId,
-        t.taskTitle,
-        t.taskDescription,
-        DATE_FORMAT(t.dueDate, '%Y-%m-%d') AS dueDate,
-        COALESCE(m.moduleName, '') AS moduleName,
-        COALESCE(m.moduleCode, '') AS moduleCode,
-        t.filePath
-      FROM   my_database.tasks t
-      JOIN   my_database.modules         m  ON m.moduleId  = t.moduleId
-      JOIN   my_database.course_modules  cm ON cm.moduleId = t.moduleId
-      JOIN   my_database.student_courses sc ON sc.courseId = cm.courseId
-      JOIN   my_database.students        s  ON s.studentId = sc.studentId
-      WHERE  s.user_id = ?
-    ) AS sub
-    ORDER BY dueDate DESC, taskId DESC
+    SELECT DISTINCT
+      t.taskId,
+      t.taskTitle,
+      t.taskDescription,
+      DATE_FORMAT(t.dueDate, '%Y-%m-%d') AS dueDate,
+      COALESCE(m.moduleName, '') AS moduleName,
+      COALESCE(m.moduleCode, '') AS moduleCode,
+      t.filePath,
+      ts.submissionId,
+      ts.filePath        AS submissionFilePath,
+      ts.submittedAt,
+      ts.result
+    FROM   my_database.tasks t
+    JOIN   my_database.modules         m  ON m.moduleId  = t.moduleId
+    JOIN   my_database.course_modules  cm ON cm.moduleId = t.moduleId
+    JOIN   my_database.student_courses sc ON sc.courseId = cm.courseId
+    JOIN   my_database.students        s  ON s.studentId = sc.studentId
+    LEFT JOIN my_database.task_submissions ts
+           ON ts.taskId = t.taskId AND ts.studentId = s.studentId
+    WHERE  s.user_id = ?
+    ORDER BY dueDate DESC, t.taskId DESC
   `;
   connection.query(query, [req.session.userId], (err, rows) => {
     if (err) {
@@ -614,6 +747,98 @@ app.get('/api/student/tasks', noCache, hasRole('student'), (req, res) => {
       return res.status(500).json({ message: 'Error fetching tasks' });
     }
     res.json(rows);
+  });
+});
+
+// POST submit a task (student uploads their work)
+app.post('/api/student/tasks/:taskId/submit', noCache, hasRole('student'), (req, res) => {
+  const taskId = parseInt(req.params.taskId, 10);
+  if (!Number.isInteger(taskId) || taskId <= 0) {
+    return res.status(400).json({ message: 'Invalid task ID' });
+  }
+
+  uploadSubmissionFile.single('submissionFile')(req, res, (uploadErr) => {
+    if (uploadErr) return res.status(400).json({ message: uploadErr.message });
+    if (!req.file)  return res.status(400).json({ message: 'A submission file is required' });
+
+    // Resolve studentId and verify the task belongs to an enrolled module
+    const resolveQuery = `
+      SELECT DISTINCT s.studentId
+      FROM   my_database.students        s
+      JOIN   my_database.student_courses sc ON sc.studentId = s.studentId
+      JOIN   my_database.course_modules  cm ON cm.courseId  = sc.courseId
+      JOIN   my_database.tasks           t  ON t.moduleId   = cm.moduleId
+      WHERE  s.user_id = ? AND t.taskId = ?
+    `;
+    connection.query(resolveQuery, [req.session.userId, taskId], (err, rows) => {
+      if (err) {
+        fs.unlinkSync(req.file.path);
+        return res.status(500).json({ message: 'Internal server error' });
+      }
+      if (!rows.length) {
+        fs.unlinkSync(req.file.path);
+        return res.status(403).json({ message: 'Task not found or not assigned to you' });
+      }
+
+      const studentId  = rows[0].studentId;
+      const filePath   = path.join('uploads', 'submissions', req.file.filename).replace(/\\/g, '/');
+
+      // Upsert: update existing submission or insert new one
+      const checkQuery = 'SELECT submissionId, filePath FROM my_database.task_submissions WHERE taskId = ? AND studentId = ?';
+      connection.query(checkQuery, [taskId, studentId], (err2, existing) => {
+        if (err2) {
+          fs.unlinkSync(req.file.path);
+          return res.status(500).json({ message: 'Internal server error' });
+        }
+
+        if (existing.length) {
+          // Remove old file from disk if it exists
+          if (existing[0].filePath) {
+            const oldAbs = path.join(__dirname, existing[0].filePath);
+            if (fs.existsSync(oldAbs)) fs.unlinkSync(oldAbs);
+          }
+          connection.query(
+            'UPDATE my_database.task_submissions SET filePath = ?, submittedAt = NOW(), result = NULL WHERE submissionId = ?',
+            [filePath, existing[0].submissionId],
+            (err3) => {
+              if (err3) return res.status(500).json({ message: 'Error updating submission' });
+              res.json({ message: 'Submission updated', submissionId: existing[0].submissionId });
+            }
+          );
+        } else {
+          connection.query(
+            'INSERT INTO my_database.task_submissions (taskId, studentId, filePath, submittedAt) VALUES (?, ?, ?, NOW())',
+            [taskId, studentId, filePath],
+            (err3, result) => {
+              if (err3) return res.status(500).json({ message: 'Error saving submission' });
+              res.status(201).json({ message: 'Submission saved', submissionId: result.insertId });
+            }
+          );
+        }
+      });
+    });
+  });
+});
+
+// GET download a student's own submission file
+app.get('/api/student/submissions/:submissionId/file', noCache, hasRole('student'), (req, res) => {
+  const submissionId = parseInt(req.params.submissionId, 10);
+  if (!Number.isInteger(submissionId) || submissionId <= 0) {
+    return res.status(400).json({ message: 'Invalid submission ID' });
+  }
+
+  const query = `
+    SELECT ts.filePath
+    FROM   my_database.task_submissions ts
+    JOIN   my_database.students s ON s.studentId = ts.studentId
+    WHERE  ts.submissionId = ? AND s.user_id = ?
+  `;
+  connection.query(query, [submissionId, req.session.userId], (err, rows) => {
+    if (err) return res.status(500).json({ message: 'Internal server error' });
+    if (!rows.length || !rows[0].filePath) return res.status(404).json({ message: 'File not found' });
+    const absPath = path.join(__dirname, rows[0].filePath);
+    if (!fs.existsSync(absPath)) return res.status(404).json({ message: 'File not found on server' });
+    res.download(absPath);
   });
 });
 

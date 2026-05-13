@@ -183,7 +183,111 @@
         .btn-icon.download:hover { background: #eff6ff; }
         .btn-icon.delete  { color: #dc2626; }
         .btn-icon.delete:hover  { background: #fee2e2; }
+        .btn-icon.view-subs { color: #7c3aed; border: 1px solid #ddd6fe; background: #f5f3ff; }
+        .btn-icon.view-subs:hover { background: #ede9fe; }
         .no-file { color: #9ca3af; font-size: 0.82rem; font-style: italic; }
+
+        /* ── Submissions panel ────────────────────────────────────────── */
+        .subs-panel {
+            display: none;
+            margin-top: 1.5rem;
+            border: 1px solid #e5e7eb;
+            border-radius: 10px;
+            background: #fff;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+            overflow: hidden;
+        }
+        .subs-panel.open { display: block; }
+        .subs-panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem 1.25rem;
+            background: #f8fafc;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        .subs-panel-header h3 {
+            margin: 0;
+            font-size: 1rem;
+            color: #1e3a8a;
+        }
+        .btn-close-panel {
+            background: none;
+            border: none;
+            font-size: 1.2rem;
+            cursor: pointer;
+            color: #6b7280;
+            line-height: 1;
+            padding: 0.1rem 0.3rem;
+        }
+        .btn-close-panel:hover { color: #111827; }
+        #subsStatus {
+            padding: 1.5rem;
+            text-align: center;
+            color: #6b7280;
+            font-size: 0.92rem;
+        }
+        .subs-table-wrapper { overflow-x: auto; padding: 0 1rem 1rem; }
+        .subs-table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 600px;
+        }
+        .subs-table th {
+            padding: 0.65rem 0.85rem;
+            border-bottom: 2px solid #e5e7eb;
+            text-align: left;
+            font-weight: 600;
+            color: #374151;
+            background: #f8fafc;
+            font-size: 0.85rem;
+            white-space: nowrap;
+        }
+        .subs-table td {
+            padding: 0.65rem 0.85rem;
+            border-bottom: 1px solid #f1f5f9;
+            font-size: 0.9rem;
+            color: #374151;
+            vertical-align: middle;
+        }
+        .grade-form {
+            display: flex;
+            gap: 0.4rem;
+            align-items: center;
+        }
+        .grade-input {
+            width: 90px;
+            padding: 0.35rem 0.6rem;
+            border: 1px solid #d1d5db;
+            border-radius: 5px;
+            font-size: 0.88rem;
+            color: #111827;
+        }
+        .grade-input:focus {
+            outline: none;
+            border-color: #2563eb;
+            box-shadow: 0 0 0 2px rgba(37,99,235,0.12);
+        }
+        .btn-save-grade {
+            padding: 0.35rem 0.75rem;
+            background: #2563eb;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.15s;
+            white-space: nowrap;
+        }
+        .btn-save-grade:hover { background: #1d4ed8; }
+        .btn-save-grade:disabled { background: #93c5fd; cursor: not-allowed; }
+        .grade-saved {
+            font-size: 0.78rem;
+            color: #15803d;
+            margin-left: 0.3rem;
+            display: none;
+        }
 
         /* ── Status / loading ─────────────────────────────────────────── */
         #tasksStatus {
@@ -292,11 +396,35 @@
                                 <th>Module</th>
                                 <th>Due Date</th>
                                 <th>File</th>
+                                <th>Submissions</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
                         <tbody id="tasksBody"></tbody>
                     </table>
+                </div>
+
+                <!-- Submissions Panel -->
+                <div class="subs-panel" id="subsPanel">
+                    <div class="subs-panel-header">
+                        <h3 id="subsPanelTitle">Submissions</h3>
+                        <button class="btn-close-panel" id="closeSubsPanel" title="Close">✕</button>
+                    </div>
+                    <div id="subsStatus">Loading submissions…</div>
+                    <div class="subs-table-wrapper" id="subsTableWrapper" style="display:none">
+                        <table class="subs-table">
+                            <thead>
+                                <tr>
+                                    <th>Student</th>
+                                    <th>Student No.</th>
+                                    <th>Submitted At</th>
+                                    <th>File</th>
+                                    <th>Grade / Result</th>
+                                </tr>
+                            </thead>
+                            <tbody id="subsBody"></tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </div>
