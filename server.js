@@ -716,6 +716,10 @@ app.get('/student/tasks', noCache, hasRole('student'), (req, res) => {
   res.sendFile(path.join(__dirname, 'student', 'tasks.html'));
 });
 
+app.get('/student/transcript', noCache, hasRole('student'), (req, res) => {
+  res.sendFile(path.join(__dirname, 'student', 'transcript.html'));
+});
+
 // GET tasks for the modules the logged-in student is enrolled in (includes submission status)
 app.get('/api/student/tasks', noCache, hasRole('student'), (req, res) => {
   const query = `
@@ -747,6 +751,122 @@ app.get('/api/student/tasks', noCache, hasRole('student'), (req, res) => {
       return res.status(500).json({ message: 'Error fetching tasks' });
     }
     res.json(rows);
+  });
+});
+
+// GET transcript data derived from graded task submissions
+app.get('/api/student/transcript', noCache, hasRole('student'), (req, res) => {
+  const query = `
+    SELECT DISTINCT
+        c.courseId,
+        c.courseName,
+        m.moduleId,
+        COALESCE(m.moduleCode, '') AS moduleCode,
+        COALESCE(m.moduleName, '') AS moduleName,
+        ts.result
+    FROM my_database.task_submissions ts
+    JOIN my_database.tasks t
+        ON t.taskId = ts.taskId
+    JOIN my_database.modules m
+        ON m.moduleId = t.moduleId
+    JOIN my_database.students s
+        ON s.studentId = ts.studentId
+    JOIN my_database.student_courses sc
+        ON sc.studentId = s.studentId
+    JOIN my_database.courses c
+        ON c.courseId = sc.courseId
+    JOIN my_database.course_modules cm
+        ON cm.courseId = sc.courseId
+      AND cm.moduleId = t.moduleId
+    WHERE s.user_id = ?
+      AND ts.result IS NOT NULL
+      AND TRIM(ts.result) <> ''
+    ORDER BY
+        c.courseName ASC,
+        moduleCode ASC,
+        moduleName ASC
+  `;
+
+  const parseNumericResult = (value) => {
+    const normalized = String(value ?? '').trim().replace(',', '.');
+    const match = normalized.match(/^(\d+(?:\.\d+)?)\s*%?$/);
+    if (!match) return null;
+
+    const score = Number(match[1]);
+    return Number.isFinite(score) ? score : null;
+  };
+
+  const roundAverage = (value) => Math.round(value * 100) / 100;
+
+  connection.query(query, [req.session.userId], (err, rows) => {
+    if (err) {
+      console.error('Error fetching transcript data:', err);
+      return res.status(500).json({ message: 'Error fetching transcript data' });
+    }
+
+    const courseMap = new Map();
+
+    rows.forEach((row) => {
+      const numericResult = parseNumericResult(row.result);
+      if (numericResult === null) {
+        return;
+      }
+
+      if (!courseMap.has(row.courseId)) {
+        courseMap.set(row.courseId, {
+          courseId: row.courseId,
+          courseName: row.courseName,
+          modules: new Map()
+        });
+      }
+
+      const course = courseMap.get(row.courseId);
+      if (!course.modules.has(row.moduleId)) {
+        course.modules.set(row.moduleId, {
+          moduleId: row.moduleId,
+          moduleCode: row.moduleCode,
+          moduleName: row.moduleName,
+          total: 0,
+          count: 0
+        });
+      }
+
+      const moduleEntry = course.modules.get(row.moduleId);
+      moduleEntry.total += numericResult;
+      moduleEntry.count += 1;
+    });
+
+    const courses = Array.from(courseMap.values()).map((course) => {
+      const modules = Array.from(course.modules.values())
+        .map((moduleEntry) => ({
+          moduleId: moduleEntry.moduleId,
+          moduleCode: moduleEntry.moduleCode,
+          moduleName: moduleEntry.moduleName,
+          gradedTaskCount: moduleEntry.count,
+          average: roundAverage(moduleEntry.total / moduleEntry.count)
+        }))
+        .sort((left, right) => {
+          const leftKey = `${left.moduleCode} ${left.moduleName}`.trim();
+          const rightKey = `${right.moduleCode} ${right.moduleName}`.trim();
+          return leftKey.localeCompare(rightKey);
+        });
+
+      const overallAverage = modules.length
+        ? roundAverage(modules.reduce((sum, moduleEntry) => sum + moduleEntry.average, 0) / modules.length)
+        : null;
+      const totalGradedTasks = modules.reduce((sum, moduleEntry) => sum + moduleEntry.gradedTaskCount, 0);
+
+      return {
+        courseId: course.courseId,
+        courseName: course.courseName,
+        overallAverage,
+        gradedModuleCount: modules.length,
+        totalGradedTasks,
+        modules
+      };
+    });
+
+    res.json({ courses });
   });
 });
 
