@@ -5,6 +5,50 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Student Dashboard - School Management System</title>
     <link rel="stylesheet" href="/shared/index.css">
+    <style>
+        .dashboard-actions {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 1rem;
+            margin-top: 2rem;
+        }
+        .dashboard-link-card {
+            display: block;
+            padding: 1.25rem;
+            border-radius: 12px;
+            border: 1px solid #dbeafe;
+            background: linear-gradient(180deg, #ffffff 0%, #eff6ff 100%);
+            box-shadow: 0 10px 24px rgba(37, 99, 235, 0.08);
+            color: inherit;
+            text-decoration: none;
+            transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+        }
+        .dashboard-link-card:hover {
+            transform: translateY(-2px);
+            border-color: #93c5fd;
+            box-shadow: 0 14px 28px rgba(37, 99, 235, 0.12);
+        }
+        .dashboard-link-card span {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 2.5rem;
+            height: 2.5rem;
+            border-radius: 10px;
+            background: #dbeafe;
+            font-size: 1.3rem;
+            margin-bottom: 0.85rem;
+        }
+        .dashboard-link-card h3 {
+            margin: 0 0 0.45rem;
+            color: #1e3a8a;
+        }
+        .dashboard-link-card p {
+            margin: 0;
+            color: #475569;
+            line-height: 1.5;
+        }
+    </style>
 </head>
 <body>
     <!-- Header -->
@@ -20,9 +64,6 @@
                 <span class="dropdown-arrow">▼</span>
             </button>
             <div class="dropdown-menu" id="dropdownMenu">
-                <a href="#profile">My Profile</a>
-                <a href="#settings">Settings</a>
-                <div class="divider"></div>
                 <button class="logout-button" id="logoutButton">Logout</button>
             </div>
         </div>
@@ -31,14 +72,9 @@
     <!-- Sidebar Navigation -->
     <nav class="sidebar" id="sidebar">
         <ul class="sidebar-nav">
-            <li><a href="#dashboard" class="active"><span class="nav-icon">📊</span> Dashboard</a></li>
-            <li><a href="#my-courses"><span class="nav-icon">📚</span> My Courses</a></li>
-            <li><a href="#grades"><span class="nav-icon">🎯</span> Grades</a></li>
-            <li><a href="#schedule"><span class="nav-icon">📅</span> Class Schedule</a></li>
-            <li><a href="#attendance"><span class="nav-icon">📝</span> Attendance</a></li>
-            <li><a href="#assignments"><span class="nav-icon">📄</span> Assignments</a></li>
+            <li><a href="/student" class="active"><span class="nav-icon">📊</span> Dashboard</a></li>
+            <li><a href="/student/schedule"><span class="nav-icon">📅</span> Class Schedule</a></li>
             <li><a href="/student/tasks"><span class="nav-icon">📋</span> Tasks</a></li>
-            <li><a href="#materials"><span class="nav-icon">📖</span> Course Materials</a></li>
             <li><a href="/student/transcript"><span class="nav-icon">📜</span> Transcript</a></li>
         </ul>
     </nav>
@@ -50,38 +86,24 @@
     <main class="main-content" id="mainContent">
         <div class="content-card">
             <h1>Welcome, Student!</h1>
-            <p>Track your academic progress and access course materials.</p>
-            
-            <div class="stats-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-top: 2rem;">
-                <div class="stat-card" style="background: #f8f9fa; padding: 1.5rem; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-                    <div style="font-size: 2rem;">📚</div>
-                    <h3>Enrolled Courses</h3>
-                    <p style="font-size: 1.5rem; font-weight: bold; color: #2563eb;">6</p>
-                </div>
-                <div class="stat-card" style="background: #f8f9fa; padding: 1.5rem; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-                    <div style="font-size: 2rem;">🎯</div>
-                    <h3>GPA</h3>
-                    <p style="font-size: 1.5rem; font-weight: bold; color: #2563eb;">3.75</p>
-                </div>
-                <div class="stat-card" style="background: #f8f9fa; padding: 1.5rem; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-                    <div style="font-size: 2rem;">📝</div>
-                    <h3>Attendance</h3>
-                    <p style="font-size: 1.5rem; font-weight: bold; color: #2563eb;">92%</p>
-                </div>
-                <div class="stat-card" style="background: #f8f9fa; padding: 1.5rem; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-                    <div style="font-size: 2rem;">📄</div>
-                    <h3>Pending Assignments</h3>
-                    <p style="font-size: 1.5rem; font-weight: bold; color: #dc2626;">3</p>
-                </div>
-            </div>
+            <p>Use the dashboard to open the student pages that are currently active.</p>
 
-            <div style="margin-top: 2rem; background: #fffbeb; padding: 1rem; border-radius: 8px; border-left: 4px solid #f59e0b;">
-                <h3 style="color: #92400e; margin-top: 0;">📌 Upcoming Deadlines</h3>
-                <ul style="color: #78350f;">
-                    <li>Mathematics Assignment - Due: Jan 5, 2026</li>
-                    <li>Physics Lab Report - Due: Jan 7, 2026</li>
-                    <li>English Essay - Due: Jan 10, 2026</li>
-                </ul>
+            <div class="dashboard-actions">
+                <a class="dashboard-link-card" href="/student/schedule">
+                    <span>📅</span>
+                    <h3>Open Schedule</h3>
+                    <p>See upcoming classes, lecturers, venues, and weekly session flow.</p>
+                </a>
+                <a class="dashboard-link-card" href="/student/tasks">
+                    <span>📋</span>
+                    <h3>Open Tasks</h3>
+                    <p>Review assignments, download task files, and submit outstanding work.</p>
+                </a>
+                <a class="dashboard-link-card" href="/student/transcript">
+                    <span>📜</span>
+                    <h3>View Transcript</h3>
+                    <p>Check graded results and track your course averages in one place.</p>
+                </a>
             </div>
         </div>
     </main>

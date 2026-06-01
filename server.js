@@ -716,8 +716,68 @@ app.get('/student/tasks', noCache, hasRole('student'), (req, res) => {
   res.sendFile(path.join(__dirname, 'student', 'tasks.html'));
 });
 
+app.get('/student/schedule', noCache, hasRole('student'), (req, res) => {
+  res.sendFile(path.join(__dirname, 'student', 'schedule.html'));
+});
+
 app.get('/student/transcript', noCache, hasRole('student'), (req, res) => {
   res.sendFile(path.join(__dirname, 'student', 'transcript.html'));
+});
+
+app.get('/api/student/schedule', noCache, hasRole('student'), (req, res) => {
+  const query = `
+    SELECT
+      ls.sessionId,
+      DATE_FORMAT(ls.sessionDate, '%Y-%m-%d') AS sessionDate,
+      TIME_FORMAT(ls.startTime, '%H:%i')      AS startTime,
+      TIME_FORMAT(ls.endTime, '%H:%i')        AS endTime,
+      COALESCE(ls.venue, '')                  AS venue,
+      COALESCE(ls.notes, '')                  AS notes,
+      COALESCE(m.moduleId, 0)                 AS moduleId,
+      COALESCE(m.moduleCode, '')              AS moduleCode,
+      COALESCE(m.moduleName, '')              AS moduleName,
+      TRIM(CONCAT(COALESCE(u.first_name, ''), ' ', COALESCE(u.last_name, ''))) AS lecturerName,
+      sa.attended,
+      sa.markedAt,
+      COALESCE(
+        GROUP_CONCAT(DISTINCT c.courseName ORDER BY c.courseName SEPARATOR ', '),
+        ''
+      ) AS courseNames
+    FROM   my_database.students s
+    JOIN   my_database.session_attendance sa ON sa.studentId = s.studentId
+    JOIN   my_database.lecturer_sessions ls  ON ls.sessionId = sa.sessionId
+    LEFT JOIN my_database.modules m          ON m.moduleId = ls.moduleId
+    LEFT JOIN my_database.lecturers l        ON l.lecturerId = ls.lecturerId
+    LEFT JOIN my_database.users u            ON u.id = l.user_id
+    LEFT JOIN my_database.student_courses sc ON sc.studentId = s.studentId
+    LEFT JOIN my_database.course_modules cm
+           ON cm.courseId = sc.courseId AND cm.moduleId = ls.moduleId
+    LEFT JOIN my_database.courses c ON c.courseId = cm.courseId
+    WHERE  s.user_id = ?
+    GROUP BY
+      ls.sessionId,
+      ls.sessionDate,
+      ls.startTime,
+      ls.endTime,
+      ls.venue,
+      ls.notes,
+      m.moduleId,
+      m.moduleCode,
+      m.moduleName,
+      u.first_name,
+      u.last_name,
+      sa.attended,
+      sa.markedAt
+    ORDER BY ls.sessionDate ASC, ls.startTime ASC, ls.sessionId ASC
+  `;
+
+  connection.query(query, [req.session.userId], (err, rows) => {
+    if (err) {
+      console.error('Error fetching student schedule:', err);
+      return res.status(500).json({ message: 'Error fetching schedule' });
+    }
+    res.json(rows);
+  });
 });
 
 // GET tasks for the modules the logged-in student is enrolled in (includes submission status)
