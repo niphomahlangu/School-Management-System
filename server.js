@@ -462,6 +462,72 @@ app.get('/api/lecturer/modules', noCache, hasRole('lecturer'), (req, res) => {
   });
 });
 
+app.get('/api/lecturer/modules-overview', noCache, hasRole('lecturer'), (req, res) => {
+  const query = `
+    SELECT
+      c.courseId,
+      c.courseCode,
+      c.courseName,
+      m.moduleId,
+      COALESCE(m.moduleCode, '') AS moduleCode,
+      COALESCE(m.moduleName, '') AS moduleName,
+      COUNT(DISTINCT ls.sessionId) AS sessionCount
+    FROM my_database.lecturers l
+    JOIN my_database.lecturer_courses lc ON lc.lecturerId = l.lecturerId
+    JOIN my_database.courses c ON c.courseId = lc.courseId
+    LEFT JOIN my_database.course_modules cm ON cm.courseId = c.courseId
+    LEFT JOIN my_database.modules m ON m.moduleId = cm.moduleId
+    LEFT JOIN my_database.lecturer_sessions ls
+      ON ls.lecturerId = l.lecturerId
+     AND ls.moduleId = m.moduleId
+    WHERE l.user_id = ?
+    GROUP BY
+      c.courseId,
+      c.courseCode,
+      c.courseName,
+      m.moduleId,
+      m.moduleCode,
+      m.moduleName
+    ORDER BY c.courseName ASC, m.moduleName ASC, m.moduleCode ASC
+  `;
+
+  connection.query(query, [req.session.userId], (err, rows) => {
+    if (err) {
+      console.error('Error fetching lecturer modules overview:', err);
+      return res.status(500).json({ message: 'Error fetching modules overview' });
+    }
+
+    const courseMap = new Map();
+    rows.forEach((row) => {
+      if (!courseMap.has(row.courseId)) {
+        courseMap.set(row.courseId, {
+          courseId: row.courseId,
+          courseCode: row.courseCode,
+          courseName: row.courseName,
+          modules: []
+        });
+      }
+
+      if (row.moduleId) {
+        courseMap.get(row.courseId).modules.push({
+          moduleId: row.moduleId,
+          moduleCode: row.moduleCode,
+          moduleName: row.moduleName,
+          sessionCount: Number(row.sessionCount || 0)
+        });
+      }
+    });
+
+    res.json({
+      courses: Array.from(courseMap.values()).map((course) => ({
+        ...course,
+        moduleCount: course.modules.length,
+        sessionCount: course.modules.reduce((sum, moduleEntry) => sum + moduleEntry.sessionCount, 0)
+      }))
+    });
+  });
+});
+
 // POST create a new task (with optional file upload)
 app.post('/api/lecturer/tasks', noCache, hasRole('lecturer'), (req, res) => {
   uploadTaskFile.single('taskFile')(req, res, (uploadErr) => {
@@ -720,6 +786,10 @@ app.get('/student/schedule', noCache, hasRole('student'), (req, res) => {
   res.sendFile(path.join(__dirname, 'student', 'schedule.html'));
 });
 
+app.get('/student/modules', noCache, hasRole('student'), (req, res) => {
+  res.sendFile(path.join(__dirname, 'student', 'modules.html'));
+});
+
 app.get('/student/transcript', noCache, hasRole('student'), (req, res) => {
   res.sendFile(path.join(__dirname, 'student', 'transcript.html'));
 });
@@ -811,6 +881,59 @@ app.get('/api/student/tasks', noCache, hasRole('student'), (req, res) => {
       return res.status(500).json({ message: 'Error fetching tasks' });
     }
     res.json(rows);
+  });
+});
+
+app.get('/api/student/modules', noCache, hasRole('student'), (req, res) => {
+  const query = `
+    SELECT DISTINCT
+      c.courseId,
+      c.courseCode,
+      c.courseName,
+      m.moduleId,
+      COALESCE(m.moduleCode, '') AS moduleCode,
+      COALESCE(m.moduleName, '') AS moduleName
+    FROM my_database.students s
+    JOIN my_database.student_courses sc ON sc.studentId = s.studentId
+    JOIN my_database.courses c ON c.courseId = sc.courseId
+    LEFT JOIN my_database.course_modules cm ON cm.courseId = c.courseId
+    LEFT JOIN my_database.modules m ON m.moduleId = cm.moduleId
+    WHERE s.user_id = ?
+    ORDER BY c.courseName ASC, moduleName ASC, moduleCode ASC
+  `;
+
+  connection.query(query, [req.session.userId], (err, rows) => {
+    if (err) {
+      console.error('Error fetching student modules:', err);
+      return res.status(500).json({ message: 'Error fetching modules' });
+    }
+
+    const courseMap = new Map();
+    rows.forEach((row) => {
+      if (!courseMap.has(row.courseId)) {
+        courseMap.set(row.courseId, {
+          courseId: row.courseId,
+          courseCode: row.courseCode,
+          courseName: row.courseName,
+          modules: []
+        });
+      }
+
+      if (row.moduleId) {
+        courseMap.get(row.courseId).modules.push({
+          moduleId: row.moduleId,
+          moduleCode: row.moduleCode,
+          moduleName: row.moduleName
+        });
+      }
+    });
+
+    res.json({
+      courses: Array.from(courseMap.values()).map((course) => ({
+        ...course,
+        moduleCount: course.modules.length
+      }))
+    });
   });
 });
 
@@ -1052,6 +1175,10 @@ app.get('/api/student/tasks/:taskId/file', noCache, hasRole('student'), (req, re
 
 app.get('/lecturer', noCache, hasRole('lecturer'), (req, res) => {
   res.sendFile(path.join(__dirname, 'lecturer', 'index.html'));
+});
+
+app.get('/lecturer/modules', noCache, hasRole('lecturer'), (req, res) => {
+  res.sendFile(path.join(__dirname, 'lecturer', 'modules.html'));
 });
 
 // Legacy routes for backward compatibility

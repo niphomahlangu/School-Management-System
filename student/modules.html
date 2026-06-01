@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Modules - School Management System</title>
+    <link rel="stylesheet" href="/shared/index.css">
+    <style>
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+        }
+        .page-header h2 {
+            margin: 0;
+            font-size: 1.4rem;
+            color: #1e3a8a;
+        }
+        .page-header p {
+            margin: 0.35rem 0 0;
+            color: #6b7280;
+            max-width: 680px;
+            line-height: 1.5;
+        }
+        .summary-strip {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 0.9rem;
+            margin-bottom: 1.5rem;
+        }
+        .summary-card {
+            padding: 1rem 1.1rem;
+            border-radius: 14px;
+            border: 1px solid #dbeafe;
+            background: linear-gradient(180deg, #ffffff 0%, #eff6ff 100%);
+        }
+        .summary-card span {
+            display: block;
+            color: #64748b;
+            font-size: 0.82rem;
+            margin-bottom: 0.35rem;
+        }
+        .summary-card strong {
+            color: #0f172a;
+            font-size: 1.45rem;
+        }
+        .course-section {
+            border: 1px solid #e5e7eb;
+            border-radius: 14px;
+            padding: 1.25rem;
+            background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+            box-shadow: 0 12px 24px rgba(15, 23, 42, 0.05);
+        }
+        .course-section + .course-section {
+            margin-top: 1.5rem;
+        }
+        .course-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 1rem;
+            flex-wrap: wrap;
+            margin-bottom: 1rem;
+        }
+        .course-title {
+            margin: 0;
+            font-size: 1.1rem;
+            color: #0f172a;
+        }
+        .course-meta {
+            margin: 0.35rem 0 0;
+            color: #64748b;
+            font-size: 0.92rem;
+        }
+        .course-code,
+        .module-code,
+        .module-count-pill {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 999px;
+            font-weight: 700;
+        }
+        .course-code,
+        .module-code {
+            padding: 0.2rem 0.55rem;
+            background: #dbeafe;
+            color: #1d4ed8;
+            font-size: 0.78rem;
+        }
+        .module-count-pill {
+            min-width: 110px;
+            padding: 0.45rem 0.8rem;
+            background: #dcfce7;
+            color: #166534;
+        }
+        .modules-table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 520px;
+        }
+        .modules-table th {
+            padding: 0.75rem 1rem;
+            border-bottom: 2px solid #dbeafe;
+            background: #eff6ff;
+            text-align: left;
+            font-size: 0.84rem;
+            color: #1e3a8a;
+        }
+        .modules-table td {
+            padding: 0.85rem 1rem;
+            border-bottom: 1px solid #e5e7eb;
+            color: #334155;
+            font-size: 0.92rem;
+        }
+        .modules-table tr:last-child td {
+            border-bottom: none;
+        }
+        #modulesStatus {
+            padding: 2rem 0;
+            text-align: center;
+            color: #6b7280;
+            font-size: 0.95rem;
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <button class="menu-toggle" id="menuToggle"><i class="fa-solid fa-bars" aria-hidden="true"></i></button>
+        <h1 class="header-title">My Modules</h1>
+        <div class="user-profile">
+            <button class="profile-button" id="profileButton">
+                <div class="profile-icon">S</div>
+                <span class="profile-name">Student</span>
+                <span class="dropdown-arrow"><i class="fa-solid fa-chevron-down" aria-hidden="true"></i></span>
+            </button>
+            <div class="dropdown-menu" id="dropdownMenu">
+                <button class="logout-button" id="logoutButton">Logout</button>
+            </div>
+        </div>
+    </header>
+
+    <nav class="sidebar" id="sidebar">
+        <ul class="sidebar-nav">
+            <li><a href="/student"><span class="nav-icon"><i class="fa-solid fa-gauge-high" aria-hidden="true"></i></span> Dashboard</a></li>
+            <li><a href="/student/schedule"><span class="nav-icon"><i class="fa-solid fa-calendar-days" aria-hidden="true"></i></span> Class Schedule</a></li>
+            <li><a href="/student/modules" class="active"><span class="nav-icon"><i class="fa-solid fa-book-open-reader" aria-hidden="true"></i></span> My Modules</a></li>
+            <li><a href="/student/tasks"><span class="nav-icon"><i class="fa-solid fa-list-ul" aria-hidden="true"></i></span> Tasks</a></li>
+            <li><a href="/student/transcript"><span class="nav-icon"><i class="fa-solid fa-file-lines" aria-hidden="true"></i></span> Transcript</a></li>
+        </ul>
+    </nav>
+
+    <div class="overlay" id="overlay"></div>
+
+    <main class="main-content" id="mainContent">
+        <div class="content-card">
+            <div class="page-header">
+                <div>
+                    <h2><i class="fa-solid fa-book-open-reader" aria-hidden="true"></i> Course Modules</h2>
+                    <p>Review each course you are enrolled in and the modules that belong to that course.</p>
+                </div>
+            </div>
+
+            <div class="summary-strip">
+                <div class="summary-card">
+                    <span>Enrolled Courses</span>
+                    <strong id="courseCount">0</strong>
+                </div>
+                <div class="summary-card">
+                    <span>Total Modules</span>
+                    <strong id="moduleCount">0</strong>
+                </div>
+            </div>
+
+            <div id="modulesStatus">Loading your course modules…</div>
+            <div id="modulesContent" style="display:none"></div>
+        </div>
+    </main>
+
+    <script src="/shared/main.js"></script>
+    <script src="/student/modules.js"></script>
+</body>
+</html>

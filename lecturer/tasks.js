@@ -90,7 +90,7 @@ async function loadTasks() {
             tr.dataset.taskId = t.taskId;
 
             const fileCell = t.filePath
-                ? `<button class="btn-icon download" title="Download file" data-task-id="${t.taskId}">⬇ Download</button>`
+                ? `<button class="btn-icon download" title="Download file" data-task-id="${t.taskId}"><i class="fa-solid fa-download" aria-hidden="true"></i> Download</button>`
                 : `<span class="no-file">No file</span>`;
 
             tr.innerHTML = `
@@ -101,10 +101,10 @@ async function loadTasks() {
                 <td>
                     <button class="btn-icon view-subs" title="View submissions"
                         data-task-id="${t.taskId}"
-                        data-task-title="${esc(t.taskTitle)}">📥 Submissions</button>
+                        data-task-title="${esc(t.taskTitle)}"><i class="fa-solid fa-folder-open" aria-hidden="true"></i> Submissions</button>
                 </td>
                 <td>
-                    <button class="btn-icon delete" title="Delete task" data-task-id="${t.taskId}">🗑 Delete</button>
+                    <button class="btn-icon delete" title="Delete task" data-task-id="${t.taskId}"><i class="fa-solid fa-trash" aria-hidden="true"></i> Delete</button>
                 </td>
             `;
             tasksBody.appendChild(tr);
@@ -239,7 +239,7 @@ async function loadSubmissions(taskId, taskTitle) {
                 <td>
                     <button class="btn-icon download sub-download"
                         data-sub-id="${s.submissionId}"
-                        title="Download submission">⬇ Download</button>
+                        title="Download submission"><i class="fa-solid fa-download" aria-hidden="true"></i> Download</button>
                 </td>
                 <td>
                     <div class="grade-form">

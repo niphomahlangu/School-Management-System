@@ -1,3 +1,5 @@
+@import url('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css');
+
 * {
     margin: 0;
     padding: 0;
@@ -42,6 +44,10 @@ body {
 .menu-toggle:hover {
     background: #f0f0f0;
     border-radius: 5px;
+}
+
+.menu-toggle i {
+    font-size: 1.25rem;
 }
 
 .header-title {
@@ -92,6 +98,9 @@ body {
 .dropdown-arrow {
     color: #666;
     font-size: 12px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
 }
 
 /* Dropdown Menu */
@@ -208,7 +217,12 @@ body {
 }
 
 .nav-icon {
-    font-size: 20px;
+    width: 20px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    flex-shrink: 0;
 }
 
 /* Main Content */

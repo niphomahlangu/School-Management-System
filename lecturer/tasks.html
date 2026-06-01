@@ -301,13 +301,13 @@
 <body>
     <!-- Header -->
     <header class="header">
-        <button class="menu-toggle" id="menuToggle"><span>☰</span></button>
+        <button class="menu-toggle" id="menuToggle"><i class="fa-solid fa-bars" aria-hidden="true"></i></button>
         <h1 class="header-title">Manage Tasks</h1>
         <div class="user-profile">
             <button class="profile-button" id="profileButton">
                 <div class="profile-icon">L</div>
                 <span class="profile-name">Lecturer</span>
-                <span class="dropdown-arrow">▼</span>
+                <span class="dropdown-arrow"><i class="fa-solid fa-chevron-down" aria-hidden="true"></i></span>
             </button>
             <div class="dropdown-menu" id="dropdownMenu">
                 <a href="#profile">My Profile</a>
@@ -321,13 +321,13 @@
     <!-- Sidebar -->
     <nav class="sidebar" id="sidebar">
         <ul class="sidebar-nav">
-            <li><a href="/lecturer"><span class="nav-icon">📊</span> Dashboard</a></li>
-            <li><a href="#my-courses"><span class="nav-icon">📚</span> My Courses</a></li>
-            <li><a href="#students"><span class="nav-icon">👨‍🎓</span> Students</a></li>
-            <li><a href="attendance.html"><span class="nav-icon">📝</span> Mark Attendance</a></li>
-            <li><a href="#grades"><span class="nav-icon">🎯</span> Manage Grades</a></li>
-            <li><a href="schedule.html"><span class="nav-icon">📅</span> Class Schedule</a></li>
-            <li><a href="tasks.html" class="active"><span class="nav-icon">📋</span> Tasks</a></li>
+            <li><a href="/lecturer"><span class="nav-icon"><i class="fa-solid fa-gauge-high" aria-hidden="true"></i></span> Dashboard</a></li>
+            <li><a href="/lecturer/modules"><span class="nav-icon"><i class="fa-solid fa-book-open" aria-hidden="true"></i></span> My Courses</a></li>
+            <li><a href="#students"><span class="nav-icon"><i class="fa-solid fa-user-graduate" aria-hidden="true"></i></span> Students</a></li>
+            <li><a href="attendance.html"><span class="nav-icon"><i class="fa-solid fa-clipboard" aria-hidden="true"></i></span> Mark Attendance</a></li>
+            <li><a href="#grades"><span class="nav-icon"><i class="fa-solid fa-bullseye" aria-hidden="true"></i></span> Manage Grades</a></li>
+            <li><a href="schedule.html"><span class="nav-icon"><i class="fa-solid fa-calendar-days" aria-hidden="true"></i></span> Class Schedule</a></li>
+            <li><a href="tasks.html" class="active"><span class="nav-icon"><i class="fa-solid fa-list-ul" aria-hidden="true"></i></span> Tasks</a></li>
         </ul>
     </nav>
 
@@ -338,7 +338,7 @@
     <main class="main-content" id="mainContent">
         <div class="content-card">
             <div class="page-header">
-                <h2>📋 Task Management</h2>
+                <h2><i class="fa-solid fa-list-ul" aria-hidden="true"></i> Task Management</h2>
             </div>
 
             <!-- Create Task Form -->

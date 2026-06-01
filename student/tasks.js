@@ -150,7 +150,7 @@ async function loadTasks() {
                 : '';
 
             const fileCell = t.filePath
-                ? `<button class="btn-icon download" data-task-id="${t.taskId}">⬇ Download</button>`
+                ? `<button class="btn-icon download" data-task-id="${t.taskId}"><i class="fa-solid fa-download" aria-hidden="true"></i> Download</button>`
                 : `<span class="no-file">No file</span>`;
 
             // Submission status

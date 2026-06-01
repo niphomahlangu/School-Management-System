@@ -140,10 +140,10 @@ async function loadAttendance(sessionId) {
         // Populate session info pills
         const { session, students } = data;
         sessionInfoBar.innerHTML = `
-            <span class="info-pill">📅 ${esc(fmtDate(session.sessionDate))}</span>
-            <span class="info-pill">🕐 ${esc(fmtTime(session.startTime))} – ${esc(fmtTime(session.endTime))}</span>
-            <span class="info-pill">📚 ${esc(session.moduleCode)} – ${esc(session.moduleName)}</span>
-            ${session.venue ? `<span class="info-pill">📍 ${esc(session.venue)}</span>` : ''}
+            <span class="info-pill"><i class="fa-solid fa-calendar-day" aria-hidden="true"></i> ${esc(fmtDate(session.sessionDate))}</span>
+            <span class="info-pill"><i class="fa-solid fa-clock" aria-hidden="true"></i> ${esc(fmtTime(session.startTime))} – ${esc(fmtTime(session.endTime))}</span>
+            <span class="info-pill"><i class="fa-solid fa-book-open" aria-hidden="true"></i> ${esc(session.moduleCode)} – ${esc(session.moduleName)}</span>
+            ${session.venue ? `<span class="info-pill"><i class="fa-solid fa-location-dot" aria-hidden="true"></i> ${esc(session.venue)}</span>` : ''}
         `;
         sessionInfoBar.hidden = false;
 
